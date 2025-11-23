@@ -69,16 +69,26 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 echo ""
-echo "Creating virtual environment..."
-python3 -m venv venv
+if [ ! -f "venv/bin/python" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv venv
+else
+    echo "Virtual environment already exists, skipping creation..."
+fi
 
 echo "Activating virtual environment..."
 source venv/bin/activate
 
-echo ""
-echo "Installing dependencies..."
-pip install --upgrade pip --quiet
-pip install -r requirements.txt --quiet
+# Check if dependencies are already installed
+python -c "import streamlit" >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "Installing dependencies (first time only)..."
+    pip install --upgrade pip --quiet
+    pip install -r requirements.txt --quiet
+else
+    echo "Dependencies already installed, skipping..."
+fi
 
 echo ""
 echo "========================================"
