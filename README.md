@@ -33,19 +33,30 @@ Easy AALM makes the EPA's lead exposure model accessible to field workers and re
 
 The app will open in your browser at `http://localhost:8501`
 
-### Mac/Linux
+### Mac
+
+**No Terminal Required!** See [MAC_SETUP.md](MAC_SETUP.md) for GUI-based setup.
+
+**Quick Terminal Setup:**
+1. **Download** this repository (Download ZIP or clone)
+2. **Install Wine**: `brew install --cask wine-stable`
+3. **Download AALM** from the [EPA website](https://www.epa.gov/land-research/all-ages-lead-model-aalm)
+4. **Update paths** in `app.py` (line 90-94) to point to your AALM_64.exe location
+5. **Run setup**: Double-click `setup.sh` (or run `./setup.sh` in Terminal)
+6. **Run the app**: Double-click `run.sh` (or run `./run.sh` in Terminal)
+
+The app will open in your browser at `http://localhost:8501`
+
+### Linux
 
 1. **Download** this repository:
    ```bash
-   git clone [repository-url]
-   cd aalm-app
+   git clone https://github.com/maximilianfuller/easy-aalm.git
+   cd easy-aalm
    ```
 
 2. **Install Wine** (required to run Windows AALM executable):
    ```bash
-   # Mac
-   brew install --cask wine-stable
-
    # Ubuntu/Debian
    sudo apt install wine
    ```

@@ -40,11 +40,15 @@ node_modules/
 package.json
 package-lock.json
 
+# Mac app bundle (users create this themselves)
+*.app/
+
 # Other project documentation (keep README and INSTALLATION)
 CROSS_PLATFORM.md
 PROJECT_SUMMARY.md
 LeggettInput_Ex1.txt
 aalm_wrapper.py
+create_mac_app.sh
 
 # IDE
 .vscode/
