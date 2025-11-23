@@ -16,26 +16,15 @@ Easy AALM makes the EPA's lead exposure model accessible to field workers and re
 
 ## Quick Start
 
-### Mac
+**Mac & Windows - Same 3 Steps:**
 
 1. **Download** this repository (click green "Code" button → Download ZIP)
 2. **Extract** the ZIP file
-3. **Double-click** `run.sh` to launch
-   - First time: Right-click → "Open" → Click "Open" again
-   - Setup runs automatically on first launch
+3. **Double-click** the run script:
+   - **Mac**: Double-click `run.sh` (first time: right-click → "Open" → "Open" again)
+   - **Windows**: Double-click `run.bat`
 
-Done! The app opens automatically in your browser at `http://localhost:8501`
-
-**Want a clickable app icon?** See [MAC_SETUP.md](MAC_SETUP.md).
-
-### Windows
-
-1. **Download** this repository (click green "Code" button → Download ZIP)
-2. **Extract** the ZIP file
-3. **Double-click** `run.bat` to launch
-   - Setup runs automatically on first launch
-
-Done! The app opens automatically in your browser at `http://localhost:8501`
+That's it! Setup runs automatically on first launch, then the app opens in your browser at `http://localhost:8501`
 
 ## Usage
 
