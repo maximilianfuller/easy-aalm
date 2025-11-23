@@ -25,13 +25,13 @@ call venv\Scripts\activate.bat
 
 echo Starting Streamlit app...
 echo.
-echo Opening browser at http://localhost:8501
+echo Opening browser in 3 seconds...
 echo.
 echo Press Ctrl+C to stop the application
 echo.
 
-REM Open browser first
-start http://localhost:8501
+REM Open browser after a delay (in a separate process)
+start "" cmd /c "timeout /t 3 /nobreak >nul && start http://localhost:8501"
 
-REM Then start Streamlit
-streamlit run app.py --server.headless true
+REM Start Streamlit (this will keep the window open)
+streamlit run app.py
