@@ -1,0 +1,11 @@
+ AALM Leggett Fortran code RunInfo file
+ Run at time =     2025      11      23      13      16      53     958
+ Run name = SimName
+ Reading inputs complete
+    Age at start    =            0
+    Age at end      =        32850
+    Number of days  =        32850
+    Total Timesteps =      3285000
+    Type of run     =            0
+ 
+ Run successfully completed

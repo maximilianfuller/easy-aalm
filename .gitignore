@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Streamlit
+.streamlit/secrets.toml
+
+# AALM files (users download separately)
+AALM_64.exe
+AALM_32.exe
+aalm_original/AALM_64.exe
+aalm_original/AALM_32.exe
+
+# AALM temporary files
+WebSim/
+LeggettInput_web.txt
+*.csv
+fort.*
+
+# Windows Zone Identifier files
+*:Zone.Identifier
+
+# Screenshots and test files
+screenshot*.png
+verify_screenshot.js
+take_screenshot*.js
+test_simulation.py
+screenshot.py
+take_screenshots_selenium.py
+
+# Node modules and package files
+node_modules/
+package.json
+package-lock.json
+
+# Other project documentation (keep README and INSTALLATION)
+CROSS_PLATFORM.md
+PROJECT_SUMMARY.md
+LeggettInput_Ex1.txt
+aalm_wrapper.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
