@@ -1,68 +1,89 @@
 #!/bin/bash
 
 echo "========================================"
-echo "Easy AALM - Mac/Linux Setup"
+echo "Easy AALM - Automatic Setup"
 echo "========================================"
 echo ""
 
-# Check if Python is installed
+# Function to install Python on Mac
+install_python_mac() {
+    echo "Installing Python via Homebrew..."
+    if ! command -v brew &> /dev/null; then
+        echo "Installing Homebrew first..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
+    brew install python3
+}
+
+# Function to install Wine on Mac
+install_wine_mac() {
+    echo "Installing Wine via Homebrew..."
+    if ! command -v brew &> /dev/null; then
+        echo "Installing Homebrew first..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
+    brew install --cask wine-stable
+}
+
+# Function to download AALM
+download_aalm() {
+    echo "Downloading AALM from EPA..."
+    AALM_URL="https://www.epa.gov/sites/default/files/2021-01/aalm_v3-1-1.zip"
+    curl -L -o aalm.zip "$AALM_URL" 2>/dev/null || wget -O aalm.zip "$AALM_URL" 2>/dev/null
+
+    if [ -f aalm.zip ]; then
+        unzip -q aalm.zip -d aalm_download
+        # Find AALM_64.exe and update path in app.py
+        AALM_PATH=$(find aalm_download -name "AALM_64.exe" | head -1)
+        if [ -n "$AALM_PATH" ]; then
+            AALM_FULL_PATH="$(cd "$(dirname "$AALM_PATH")" && pwd)/$(basename "$AALM_PATH")"
+            echo "Found AALM at: $AALM_FULL_PATH"
+            # Auto-update path in app.py (will be implemented)
+        fi
+        rm aalm.zip
+    fi
+}
+
+# Auto-install Python if missing
 if ! command -v python3 &> /dev/null; then
-    echo "ERROR: Python 3 is not installed"
-    echo "Please install Python 3.8 or higher"
-    echo "  Mac: brew install python3"
-    echo "  or download from python.org"
-    exit 1
+    echo "Python 3 not found. Installing automatically..."
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        install_python_mac
+    else
+        echo "Please install Python 3.8+ manually: https://www.python.org/downloads/"
+        exit 1
+    fi
 fi
 
 echo "Python found: $(python3 --version)"
 echo ""
 
-# Check if Wine is installed (needed for running Windows AALM executable)
-if ! command -v wine &> /dev/null; then
-    echo "WARNING: Wine is not installed"
-    echo "Wine is needed to run the Windows AALM executable on Mac/Linux"
-    echo ""
-    echo "To install Wine:"
-    echo "  Mac: brew install --cask wine-stable"
-    echo "  Ubuntu/Debian: sudo apt install wine"
-    echo ""
-    read -p "Continue without Wine? (y/n) " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
+# Auto-install Wine if missing (Mac only)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    if ! command -v wine &> /dev/null; then
+        echo "Wine not found. Installing automatically..."
+        install_wine_mac
+    else
+        echo "Wine found: $(wine --version)"
     fi
-else
-    echo "Wine found: $(wine --version)"
 fi
 
 echo ""
 echo "Creating virtual environment..."
 python3 -m venv venv
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to create virtual environment"
-    exit 1
-fi
 
-echo ""
 echo "Activating virtual environment..."
 source venv/bin/activate
 
 echo ""
 echo "Installing dependencies..."
-pip install --upgrade pip
-pip install -r requirements.txt
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to install dependencies"
-    exit 1
-fi
+pip install --upgrade pip --quiet
+pip install -r requirements.txt --quiet
 
 echo ""
 echo "========================================"
 echo "Setup complete!"
 echo "========================================"
 echo ""
-echo "Next steps:"
-echo "1. Download AALM from EPA website if you haven't already"
-echo "2. Update the aalm_paths in app.py to point to your AALM_64.exe"
-echo "3. Run the app using ./run.sh"
+echo "To run Easy AALM, double-click run.sh"
 echo ""

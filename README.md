@@ -18,42 +18,29 @@ Easy AALM makes the EPA's lead exposure model accessible to field workers and re
 
 ### Mac
 
-**No Terminal required!** Follow these steps:
+1. **Download** this repository (click green "Code" button → Download ZIP)
+2. **Extract** the ZIP file
+3. **Double-click** `setup.sh`
+   - First time: Right-click → "Open" → Click "Open" again
+   - Setup automatically installs Python and Wine if needed
+4. **Download AALM** from the [EPA website](https://www.epa.gov/land-research/all-ages-lead-model-aalm) and note where you save it
+5. **Edit** `app.py` (line 91) to point to your AALM_64.exe location
+6. **Double-click** `run.sh` to launch
 
-1. **Download** this repository (Download ZIP from GitHub)
-2. **Extract** the files to a folder (e.g., Downloads/easy-aalm)
-3. **Download AALM** from the [EPA website](https://www.epa.gov/land-research/all-ages-lead-model-aalm)
-4. **Install Python** (if not already installed):
-   - Download from [python.org](https://www.python.org/downloads/)
-   - Or use Homebrew: `brew install python3`
-5. **Install Wine** (required to run AALM):
-   - Use Homebrew: `brew install --cask wine-stable`
-6. **Update paths** in `app.py` (line 90-94) to point to your AALM_64.exe location
-7. **Run setup**: Double-click `setup.sh` in Finder
-   - First time: Right-click → "Open With" → "Terminal"
-   - May need to allow in System Preferences → Security & Privacy
-8. **Run the app**: Double-click `run.sh` in Finder
+The app opens automatically in your browser at `http://localhost:8501`
 
-The app will open in your browser at `http://localhost:8501`
-
-**Want a clickable app icon?** See [MAC_SETUP.md](MAC_SETUP.md) for instructions to create an Automator app.
+**Want a clickable app icon?** See [MAC_SETUP.md](MAC_SETUP.md).
 
 ### Windows
 
-1. **Download** this repository (Clone or Download ZIP)
-2. **Extract** the files to a folder
-3. **Download AALM** from the [EPA website](https://www.epa.gov/land-research/all-ages-lead-model-aalm)
-4. **Update paths** in `app.py` (line 90-94) to point to your AALM_64.exe location
-5. **Run setup**:
-   ```
-   Double-click setup.bat
-   ```
-6. **Run the app**:
-   ```
-   Double-click run.bat
-   ```
+1. **Download** this repository (click green "Code" button → Download ZIP)
+2. **Extract** the ZIP file
+3. **Double-click** `setup.bat`
+4. **Download AALM** from the [EPA website](https://www.epa.gov/land-research/all-ages-lead-model-aalm) and note where you save it
+5. **Edit** `app.py` (line 91) to point to your AALM_64.exe location
+6. **Double-click** `run.bat` to launch
 
-The app will open in your browser at `http://localhost:8501`
+The app opens automatically in your browser at `http://localhost:8501`
 
 ## Usage
 
