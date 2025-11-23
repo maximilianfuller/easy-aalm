@@ -25,10 +25,13 @@ call venv\Scripts\activate.bat
 
 echo Starting Streamlit app...
 echo.
-echo The app will open in your browser at:
-echo http://localhost:8501
+echo Opening browser at http://localhost:8501
 echo.
 echo Press Ctrl+C to stop the application
 echo.
 
-streamlit run app.py
+REM Open browser first
+start http://localhost:8501
+
+REM Then start Streamlit
+streamlit run app.py --server.headless true
