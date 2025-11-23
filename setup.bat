@@ -5,10 +5,17 @@ echo ========================================
 echo.
 
 REM Check if Python is installed
-python --version >nul 2>&1
+echo Checking for Python...
+python --version
 if errorlevel 1 (
+    echo.
     echo ERROR: Python is not installed or not in PATH
-    echo Please install Python 3.8 or higher from python.org
+    echo.
+    echo Please install Python from:
+    echo https://www.python.org/downloads/
+    echo.
+    echo Make sure to check "Add Python to PATH" during installation!
+    echo.
     pause
     exit /b 1
 )
