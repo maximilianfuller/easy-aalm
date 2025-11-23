@@ -12,11 +12,8 @@ ENV/
 # Streamlit
 .streamlit/secrets.toml
 
-# AALM files (users download separately)
-AALM_64.exe
-AALM_32.exe
-aalm_original/AALM_64.exe
-aalm_original/AALM_32.exe
+# AALM executables are now included in the repo
+# (removed from gitignore)
 
 # AALM temporary files
 WebSim/

@@ -85,11 +85,12 @@ run_button = st.sidebar.button("Calculate Blood Lead Level", type="primary", use
 if run_button:
     with st.spinner("Running AALM simulation..."):
         try:
-            # Find AALM executable
+            # Find AALM executable - now bundled with the app!
+            script_dir = Path(__file__).parent
             aalm_paths = [
-                Path("/mnt/c/Users/maxim/aalm_v3-1-1/AALM_64.exe"),
-                Path("/mnt/c/Users/maxim/aalm_test/AALM_64.exe"),
-                Path("AALM_64.exe"),
+                script_dir / "aalm_original" / "AALM_64.exe",  # Bundled version
+                Path("aalm_original/AALM_64.exe"),  # Relative path
+                Path("AALM_64.exe"),  # Current directory
             ]
 
             aalm_exe = None
