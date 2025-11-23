@@ -29,23 +29,20 @@ if not exist "venv\Scripts\python.exe" (
     echo Virtual environment already exists, skipping creation...
 )
 
-echo.
-echo Activating virtual environment...
-call venv\Scripts\activate.bat
-
 REM Check if dependencies are already installed
-python -c "import streamlit" >nul 2>&1
+venv\Scripts\python.exe -c "import streamlit" >nul 2>&1
 if errorlevel 1 (
     echo.
     echo Installing dependencies (first time only)...
-    pip install --upgrade pip --quiet
-    pip install -r requirements.txt --quiet
+    venv\Scripts\python.exe -m pip install --upgrade pip --quiet
+    venv\Scripts\python.exe -m pip install -r requirements.txt --quiet
     if errorlevel 1 (
         echo ERROR: Failed to install dependencies
         pause
         exit /b 1
     )
 ) else (
+    echo.
     echo Dependencies already installed, skipping...
 )
 
