@@ -34,13 +34,16 @@ venv\Scripts\python.exe -c "import streamlit" >nul 2>&1
 if errorlevel 1 (
     echo.
     echo Installing dependencies (first time only)...
-    venv\Scripts\python.exe -m pip install --upgrade pip --quiet
-    venv\Scripts\python.exe -m pip install -r requirements.txt --quiet
+    echo This may take a minute...
+    venv\Scripts\python.exe -m pip install --upgrade pip
+    venv\Scripts\python.exe -m pip install -r requirements.txt
     if errorlevel 1 (
         echo ERROR: Failed to install dependencies
         pause
         exit /b 1
     )
+    echo.
+    echo Installation complete!
 ) else (
     echo.
     echo Dependencies already installed, skipping...
