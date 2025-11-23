@@ -25,8 +25,20 @@ if not exist "venv\Scripts\python.exe" (
         pause
         exit /b 1
     )
+    echo Virtual environment created successfully!
 ) else (
     echo Virtual environment already exists, skipping creation...
+)
+
+echo.
+echo Verifying venv Python exists...
+if exist "venv\Scripts\python.exe" (
+    echo Found: venv\Scripts\python.exe
+    venv\Scripts\python.exe --version
+) else (
+    echo ERROR: venv\Scripts\python.exe not found!
+    pause
+    exit /b 1
 )
 
 REM Check if dependencies are already installed

@@ -18,17 +18,12 @@ if exist "venv\Scripts\activate.bat" (
 )
 
 echo.
-echo Activating virtual environment...
-call venv\Scripts\activate.bat
-echo.
-
 echo Checking Python in venv:
-where python
-python --version
+venv\Scripts\python.exe --version
 echo.
 
 echo Checking if streamlit is installed:
-python -c "import streamlit; print('Streamlit version:', streamlit.__version__)"
+venv\Scripts\python.exe -c "import streamlit; print('Streamlit version:', streamlit.__version__)"
 if errorlevel 1 (
     echo ERROR: Streamlit not found!
     pause
