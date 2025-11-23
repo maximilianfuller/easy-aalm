@@ -7,9 +7,17 @@ echo ""
 
 # Check if virtual environment exists
 if [ ! -f "venv/bin/activate" ]; then
-    echo "ERROR: Virtual environment not found"
-    echo "Please run ./setup.sh first"
-    exit 1
+    echo "Virtual environment not found. Running setup first..."
+    echo ""
+    ./setup.sh
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo "Setup failed. Please check the error messages above."
+        exit 1
+    fi
+    echo ""
+    echo "Setup complete! Now starting the application..."
+    echo ""
 fi
 
 echo "Activating virtual environment..."
