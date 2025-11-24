@@ -63,11 +63,20 @@ else
 fi
 
 echo ""
-echo "Step 2: Signing the app bundle..."
+echo "Step 2: Preparing app bundle..."
 echo ""
 
+# Fix any Windows line endings in executable scripts
+echo "Fixing line endings in executable scripts..."
+find "Easy AALM.app" -type f -perm +111 -exec sed -i '' 's/\r$//' {} \; 2>/dev/null || true
+
 # Remove extended attributes that might cause issues
+echo "Removing extended attributes..."
 xattr -cr "Easy AALM.app"
+
+echo ""
+echo "Step 3: Signing the app bundle..."
+echo ""
 
 # Sign the app
 codesign --deep --force --verify --verbose --sign "$SIGNING_IDENTITY" "Easy AALM.app"
@@ -86,7 +95,7 @@ codesign --verify --deep --strict --verbose=2 "Easy AALM.app"
 spctl -a -t exec -vv "Easy AALM.app"
 
 echo ""
-echo "Step 3: Creating zip for notarization..."
+echo "Step 4: Creating zip for notarization..."
 echo ""
 
 # Remove old zip if exists
@@ -103,7 +112,7 @@ else
 fi
 
 echo ""
-echo "Step 4: Submitting for notarization..."
+echo "Step 5: Submitting for notarization..."
 echo ""
 
 # Check for environment variables or prompt
@@ -168,7 +177,7 @@ else
 fi
 
 echo ""
-echo "Step 5: Stapling notarization ticket..."
+echo "Step 6: Stapling notarization ticket..."
 echo ""
 
 xcrun stapler staple "Easy AALM.app"
@@ -181,7 +190,7 @@ else
 fi
 
 echo ""
-echo "Step 6: Final verification..."
+echo "Step 7: Final verification..."
 echo ""
 
 spctl -a -t exec -vv "Easy AALM.app"
