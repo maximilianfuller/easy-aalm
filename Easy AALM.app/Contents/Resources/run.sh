@@ -77,4 +77,5 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
 fi &
 
 # Start Streamlit using the venv Python, running from user data directory
+cd "$USER_DATA_DIR"
 "$USER_DATA_DIR/venv/bin/python" -m streamlit run "$USER_DATA_DIR/app.py" --server.headless true
