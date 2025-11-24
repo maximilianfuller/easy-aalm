@@ -1,36 +1,13 @@
 #!/bin/bash
 
-# Get the directory containing the .app bundle
-APP_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+# Get the Resources directory inside the app bundle
+RESOURCES_DIR="$(cd "$(dirname "$0")/../Resources" && pwd)"
 
-# Change to that directory
-cd "$APP_DIR"
+# Change to the Resources directory
+cd "$RESOURCES_DIR"
 
-# Show a user-friendly notification
-osascript -e 'display notification "Easy AALM is starting..." with title "Easy AALM" sound name "Glass"'
-
-# Check if this is first-time setup
-if [ ! -f "venv/bin/python" ]; then
-    # First time - show setup dialog and run in visible Terminal
-    osascript <<EOF
-    display dialog "Welcome to Easy AALM!
-
-This is your first time running the app.
-Setup will take about 30 seconds.
-
-A Terminal window will open to show progress.
-When complete, the app will open in your browser." buttons {"OK"} default button "OK" with title "Easy AALM - First Time Setup"
-
-    tell application "Terminal"
-        do script "cd '$APP_DIR' && ./run.sh && echo '' && echo 'Easy AALM is now running in your browser.' && echo 'You can minimize this window, but do not close it.' && echo '' && read -p 'Press Enter to stop the server...'"
-        activate
-    end tell
-EOF
-else
-    # Already set up - run silently in background
-    nohup ./run.sh > /dev/null 2>&1 &
-
-    # Wait a moment for server to start, then notify
-    sleep 3
-    osascript -e 'display notification "Opening in your browser..." with title "Easy AALM" sound name "Glass"'
-fi
+# Open Terminal and run the script
+osascript -e "tell application \"Terminal\"
+    do script \"cd '$RESOURCES_DIR' && ./run.sh\"
+    activate
+end tell"
