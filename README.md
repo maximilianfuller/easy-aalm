@@ -33,12 +33,12 @@ That's it! Setup runs automatically on first launch, then the app opens in your 
 
 The app is **fully signed and notarized** by Apple - no security warnings!
 
-**Option 2: Run from Terminal**
+**Option 2: Alternative Launcher**
 1. **Download** this repository (click green "Code" button → Download ZIP)
 2. **Extract** the ZIP file
-3. **Double-click** `run.sh` or `run.command`
+3. **Double-click** `run.command`
 
-The app will open in your browser at `http://localhost:8501`
+Both options will open the app in your browser at `http://localhost:8501`
 
 ## Usage
 
