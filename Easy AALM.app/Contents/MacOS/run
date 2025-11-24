@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Get the directory containing the .app bundle
+APP_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+
+# Change to that directory
+cd "$APP_DIR"
+
+# Open Terminal and run the script
+osascript -e "tell application \"Terminal\"
+    do script \"cd '$APP_DIR' && ./run.sh\"
+    activate
+end tell"

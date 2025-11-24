@@ -37,8 +37,8 @@ node_modules/
 package.json
 package-lock.json
 
-# Mac app bundle (users create this themselves)
-*.app/
+# Mac app bundle is now included in repo (for notarization)
+# *.app/
 
 # Other project documentation (keep README and INSTALLATION)
 CROSS_PLATFORM.md
