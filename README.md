@@ -26,13 +26,19 @@ That's it! Setup runs automatically on first launch, then the app opens in your 
 
 ### Mac
 
+**Option 1: Pre-built App (Recommended)**
 1. **Download** this repository (click green "Code" button → Download ZIP)
 2. **Extract** the ZIP file
 3. **Double-click** `Easy AALM.app`
 
-The app will open in your browser at `http://localhost:8501`
+The app is **fully signed and notarized** by Apple - no security warnings!
 
-Note: First time only, you may need to right-click → "Open" to bypass security.
+**Option 2: Run from Terminal**
+1. **Download** this repository (click green "Code" button → Download ZIP)
+2. **Extract** the ZIP file
+3. **Double-click** `run.sh` or `run.command`
+
+The app will open in your browser at `http://localhost:8501`
 
 ## Usage
 
@@ -55,13 +61,16 @@ Note: First time only, you may need to right-click → "Open" to bypass security
 ## Project Structure
 
 ```
-aalm-app/
+easy-aalm/
+├── Easy AALM.app/                  # Mac app bundle (signed & notarized)
 ├── app.py                          # Streamlit web interface
 ├── requirements.txt                # Python dependencies
 ├── setup.bat                       # Windows setup script
 ├── run.bat                         # Windows run script
 ├── setup.sh                        # Mac/Linux setup script
 ├── run.sh                          # Mac/Linux run script
+├── run.command                     # Mac launcher script
+├── sign-and-notarize.sh            # Developer script for code signing
 ├── .gitignore                      # Git ignore file
 ├── README.md                       # This file
 └── aalm_original/                  # Original AALM files (for template)
