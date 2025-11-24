@@ -69,6 +69,11 @@ if [ -f "$USER_DATA_DIR/aalm_original/AALM_32.exe" ]; then
     chmod +x "$USER_DATA_DIR/aalm_original/AALM_32.exe" 2>/dev/null || true
 fi
 
+# Always update app.py from app bundle (in case we've updated it)
+if [ -f "$APP_RESOURCES/app.py" ]; then
+    cp "$APP_RESOURCES/app.py" "$USER_DATA_DIR/app.py" 2>/dev/null || true
+fi
+
 echo "Starting Streamlit app..."
 echo ""
 echo "Browser will open at http://localhost:8501"
