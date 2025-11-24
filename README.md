@@ -33,6 +33,16 @@ That's it! Setup runs automatically on first launch, then the app opens in your 
 
 The app is **fully signed and notarized** by Apple - no security warnings!
 
+**First-time use:**
+- A dialog will explain that setup takes ~30 seconds
+- A Terminal window will show installation progress
+- The app will automatically open in your browser when ready
+
+**Subsequent uses:**
+- The app launches silently in the background
+- A notification appears when ready
+- No Terminal window needed!
+
 **Option 2: Alternative Launcher**
 1. **Download** this repository (click green "Code" button → Download ZIP)
 2. **Extract** the ZIP file
