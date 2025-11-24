@@ -108,7 +108,7 @@ if run_button:
                 tmpdir = Path(tmpdir)
 
                 # Generate input file
-                template_path = script_dir / "aalm_original" / "Examples" / "LeggettInput_Ex1.txt"
+                template_path = script_dir / "aalm_original" / "Examples" / "LeggettInput_Ex1a.txt"
                 if not template_path.exists():
                     st.error(f"Template file not found at {template_path}. Please ensure aalm_original/Examples directory exists.")
                     st.stop()

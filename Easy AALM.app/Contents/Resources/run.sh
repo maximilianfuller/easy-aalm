@@ -56,6 +56,10 @@ if [ ! -f "$USER_DATA_DIR/venv/bin/python" ]; then
     cp -r "$APP_RESOURCES/.streamlit" "$USER_DATA_DIR/"
     cp "$APP_RESOURCES/app.py" "$USER_DATA_DIR/"
 
+    echo "Setting execute permissions on AALM executables..."
+    chmod +x "$USER_DATA_DIR/aalm_original/AALM_64.exe" 2>/dev/null || true
+    chmod +x "$USER_DATA_DIR/aalm_original/AALM_32.exe" 2>/dev/null || true
+
     echo ""
     echo "Setup complete! Starting the application..."
     echo ""
