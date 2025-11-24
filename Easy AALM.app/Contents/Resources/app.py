@@ -176,13 +176,38 @@ if run_button:
                 output_dir.mkdir(exist_ok=True)
 
                 # Run AALM from its own directory (important!)
-                result = subprocess.run(
-                    [str(aalm_exe), str(input_file.name)],  # Just the filename
-                    cwd=str(aalm_dir),  # Run from AALM directory
-                    capture_output=True,
-                    text=True,
-                    timeout=60
-                )
+                # On macOS, we need Wine to run Windows executables
+                import platform
+                if platform.system() == "Darwin":  # macOS
+                    # Check if wine is available
+                    wine_check = subprocess.run(["which", "wine"], capture_output=True)
+                    if wine_check.returncode != 0:
+                        st.error("Wine is not installed. On macOS, Wine is required to run AALM.")
+                        st.markdown("""
+                        **To install Wine:**
+                        1. Install Homebrew: https://brew.sh
+                        2. Run: `brew install wine-stable`
+                        3. Restart this app
+                        """)
+                        st.stop()
+
+                    # Run with wine
+                    result = subprocess.run(
+                        ["wine", str(aalm_exe), str(input_file.name)],
+                        cwd=str(aalm_dir),
+                        capture_output=True,
+                        text=True,
+                        timeout=60
+                    )
+                else:
+                    # Windows - run directly
+                    result = subprocess.run(
+                        [str(aalm_exe), str(input_file.name)],
+                        cwd=str(aalm_dir),
+                        capture_output=True,
+                        text=True,
+                        timeout=60
+                    )
 
                 if result.returncode != 0:
                     st.error(f"AALM simulation failed:\n{result.stderr}")
