@@ -38,24 +38,13 @@ if not exist "venv\Scripts\python.exe" (
 )
 
 echo.
-echo Verifying venv Python exists...
-if exist "venv\Scripts\python.exe" (
-    echo Found: venv\Scripts\python.exe
-    venv\Scripts\python.exe --version
-) else (
-    echo ERROR: venv\Scripts\python.exe not found!
-    pause
-    exit /b 1
-)
 
 REM Check if dependencies are already installed
 venv\Scripts\python.exe -c "import streamlit" >nul 2>&1
 if errorlevel 1 (
-    echo.
     echo Installing dependencies (first time only)...
     echo This may take a minute...
-    venv\Scripts\python.exe -m pip install --upgrade pip
-    venv\Scripts\python.exe -m pip install -r requirements.txt
+    venv\Scripts\python.exe -m pip install streamlit pandas plotly
     if errorlevel 1 (
         echo ERROR: Failed to install dependencies
         pause
@@ -64,7 +53,6 @@ if errorlevel 1 (
     echo.
     echo Installation complete!
 ) else (
-    echo.
     echo Dependencies already installed, skipping...
 )
 
@@ -73,9 +61,6 @@ echo ========================================
 echo Setup complete!
 echo ========================================
 echo.
-echo Next steps:
-echo 1. Download AALM from EPA website if you haven't already
-echo 2. Update the aalm_paths in app.py to point to your AALM_64.exe
-echo 3. Run the app using run.bat
+echo Run the app using run.bat
 echo.
 pause
