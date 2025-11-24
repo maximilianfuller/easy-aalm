@@ -2,6 +2,19 @@
 
 # Script to sign and notarize Easy AALM for macOS
 # Run this on a Mac with Xcode and an Apple Developer account
+#
+# Usage:
+#   Interactive mode:
+#     ./sign-and-notarize.sh
+#
+#   Non-interactive mode (set environment variables):
+#     export APPLE_ID="your@email.com"
+#     export TEAM_ID="YOUR_TEAM_ID"
+#     export APP_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+#     ./sign-and-notarize.sh
+#
+#   Or as one-liner:
+#     APPLE_ID="your@email.com" TEAM_ID="YOUR_TEAM_ID" APP_PASSWORD="xxxx-xxxx-xxxx-xxxx" ./sign-and-notarize.sh
 
 set -e
 
@@ -33,12 +46,20 @@ echo ""
 security find-identity -v -p codesigning
 echo ""
 
-# Prompt for signing identity
-read -p "Enter your Developer ID Application identity (e.g., 'Developer ID Application: Your Name (TEAM_ID)'): " SIGNING_IDENTITY
-
+# Auto-detect or prompt for signing identity
 if [ -z "$SIGNING_IDENTITY" ]; then
-    echo -e "${RED}ERROR: No signing identity provided${NC}"
-    exit 1
+    # Try to auto-detect Developer ID Application certificate
+    SIGNING_IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | sed -n 's/.*"\(.*\)"/\1/p')
+
+    if [ -z "$SIGNING_IDENTITY" ]; then
+        echo -e "${RED}ERROR: No Developer ID Application certificate found${NC}"
+        echo "Please create one at https://developer.apple.com/account/resources/certificates/add"
+        exit 1
+    fi
+
+    echo -e "${GREEN}Auto-detected signing identity: $SIGNING_IDENTITY${NC}"
+else
+    echo -e "${GREEN}Using provided signing identity: $SIGNING_IDENTITY${NC}"
 fi
 
 echo ""
@@ -84,21 +105,48 @@ fi
 echo ""
 echo "Step 4: Submitting for notarization..."
 echo ""
-echo -e "${YELLOW}You need:${NC}"
-echo "  - Apple ID (email)"
-echo "  - App-specific password (create at appleid.apple.com)"
-echo "  - Team ID (found in your Apple Developer account)"
-echo ""
 
-read -p "Enter your Apple ID (email): " APPLE_ID
-read -p "Enter your Team ID: " TEAM_ID
-read -sp "Enter your app-specific password: " APP_PASSWORD
-echo ""
+# Check for environment variables or prompt
+if [ -z "$APPLE_ID" ] || [ -z "$TEAM_ID" ] || [ -z "$APP_PASSWORD" ]; then
+    echo -e "${YELLOW}You need:${NC}"
+    echo "  - Apple ID (email)"
+    echo "  - App-specific password (create at appleid.apple.com)"
+    echo "  - Team ID (found in your Apple Developer account)"
+    echo ""
+    echo -e "${YELLOW}Tip: Set environment variables to skip prompts:${NC}"
+    echo "  export APPLE_ID='your@email.com'"
+    echo "  export TEAM_ID='YOUR_TEAM_ID'"
+    echo "  export APP_PASSWORD='xxxx-xxxx-xxxx-xxxx'"
+    echo ""
+
+    if [ -z "$APPLE_ID" ]; then
+        read -p "Enter your Apple ID (email): " APPLE_ID
+    fi
+
+    if [ -z "$TEAM_ID" ]; then
+        # Try to extract Team ID from signing identity
+        TEAM_ID=$(echo "$SIGNING_IDENTITY" | sed -n 's/.*(\(.*\)).*/\1/p')
+        if [ -z "$TEAM_ID" ]; then
+            read -p "Enter your Team ID: " TEAM_ID
+        else
+            echo "Auto-detected Team ID from certificate: $TEAM_ID"
+        fi
+    fi
+
+    if [ -z "$APP_PASSWORD" ]; then
+        read -sp "Enter your app-specific password: " APP_PASSWORD
+        echo ""
+    fi
+fi
 
 if [ -z "$APPLE_ID" ] || [ -z "$TEAM_ID" ] || [ -z "$APP_PASSWORD" ]; then
     echo -e "${RED}ERROR: Missing required credentials${NC}"
     exit 1
 fi
+
+echo ""
+echo "Using Apple ID: $APPLE_ID"
+echo "Using Team ID: $TEAM_ID"
 
 echo ""
 echo "Submitting to Apple (this may take a few minutes)..."
