@@ -1,7 +1,14 @@
 #!/bin/bash
 
-# Change to the directory where this script is located
-cd "$(dirname "$0")"
+# Get the directory where this script is located (app bundle Resources)
+APP_RESOURCES="$(cd "$(dirname "$0")" && pwd)"
+
+# Use user's Application Support directory for writable data
+USER_DATA_DIR="$HOME/Library/Application Support/Easy AALM"
+mkdir -p "$USER_DATA_DIR"
+
+# Change to user data directory
+cd "$USER_DATA_DIR"
 
 echo "========================================"
 echo "Easy AALM - Starting Application"
@@ -9,7 +16,7 @@ echo "========================================"
 echo ""
 
 # Check if virtual environment exists
-if [ ! -f "venv/bin/python" ]; then
+if [ ! -f "$USER_DATA_DIR/venv/bin/python" ]; then
     echo "First-time setup: Creating virtual environment..."
     echo ""
 
@@ -28,7 +35,7 @@ if [ ! -f "venv/bin/python" ]; then
     fi
 
     # Create virtual environment
-    python3 -m venv venv
+    python3 -m venv "$USER_DATA_DIR/venv"
     if [ $? -ne 0 ]; then
         echo "ERROR: Failed to create virtual environment"
         read -p "Press Enter to exit..."
@@ -37,12 +44,17 @@ if [ ! -f "venv/bin/python" ]; then
 
     echo "Installing dependencies..."
     echo "This may take a minute..."
-    venv/bin/python -m pip install streamlit pandas plotly
+    "$USER_DATA_DIR/venv/bin/python" -m pip install streamlit pandas plotly
     if [ $? -ne 0 ]; then
         echo "ERROR: Failed to install dependencies"
         read -p "Press Enter to exit..."
         exit 1
     fi
+
+    echo "Copying app files to user directory..."
+    cp -r "$APP_RESOURCES/aalm_original" "$USER_DATA_DIR/"
+    cp -r "$APP_RESOURCES/.streamlit" "$USER_DATA_DIR/"
+    cp "$APP_RESOURCES/app.py" "$USER_DATA_DIR/"
 
     echo ""
     echo "Setup complete! Starting the application..."
@@ -64,5 +76,5 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     xdg-open http://localhost:8501 2>/dev/null || true
 fi &
 
-# Start Streamlit using the venv Python directly
-venv/bin/python -m streamlit run app.py --server.headless true
+# Start Streamlit using the venv Python, running from user data directory
+"$USER_DATA_DIR/venv/bin/python" -m streamlit run "$USER_DATA_DIR/app.py" --server.headless true
