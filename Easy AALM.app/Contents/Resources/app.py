@@ -355,7 +355,7 @@ else:
     - **Lab results** for food and water samples
 
     #### Steps:
-    1. **Set age range** - Typically 0-7 years for children
+    1. **Set age range**
     2. **Choose sex** - Male or Female (affects body weight parameters)
     3. **Enter lead exposure**:
        - **Food**: Micrograms per day from dietary intake
