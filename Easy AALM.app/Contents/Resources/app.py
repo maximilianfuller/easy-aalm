@@ -21,76 +21,165 @@ st.set_page_config(
 st.title("Easy AALM - Lead Exposure Calculator")
 st.markdown("Simple tool to estimate Blood Lead Levels from environmental measurements")
 
-# Sidebar for inputs
-st.sidebar.header("Parameters")
+st.markdown("---")
 
-# Age and Sex
-age_range = st.sidebar.slider("Age Range (years)", 0, 90, (0, 90), help="Simulation from birth to specified age")
-sex = st.sidebar.selectbox("Sex", ["Male", "Female"])
+# Demographics section at top
+st.markdown("### Demographics")
+col1, spacer, col2 = st.columns([1, 0.2, 1])
+with col1:
+    age_range = st.slider("Age Range (years)", 0, 90, (0, 90), help="Simulation from birth to specified age")
+with col2:
+    sex = st.radio("Sex", ["Male", "Female"], horizontal=True)
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### Lead Exposure Sources")
+st.markdown("---")
 
-# Food/Diet
-st.sidebar.markdown("#### Food")
-food_input_type = st.sidebar.radio(
-    "Food Input Type",
-    ["μg/day (constant)", "μg/kg/day", "PPM"],
-    help="How you want to specify dietary lead"
-)
+# All 5 exposure pathways in columns
+header_col1, header_col2 = st.columns([3, 1])
+with header_col1:
+    st.markdown("### Lead Exposure Sources")
+with header_col2:
+    if st.button("Clear All Sources", help="Set all lead concentrations to zero"):
+        st.session_state.water_conc = 0.0
+        st.session_state.food_amt = 0.0
+        st.session_state.soil_conc = 0
+        st.session_state.dust_conc = 0
+        st.session_state.air_conc = 0.0
+        st.rerun()
 
-if food_input_type == "μg/day (constant)":
-    food_value = st.sidebar.number_input("Food Lead (μg/day)", 0.0, 100.0, 5.0, 0.1)
-    food_ug_day = food_value
-elif food_input_type == "μg/kg/day":
-    food_value = st.sidebar.number_input("Food Lead (μg/kg/day)", 0.0, 10.0, 0.5, 0.1)
-    # Will be converted based on body weight in input file
-    food_ug_day = food_value  # Placeholder, actual conversion happens in template
-else:  # PPM
-    food_value = st.sidebar.number_input("Food Lead (PPM)", 0.0, 10.0, 0.1, 0.01)
-    food_ug_day = food_value * 500  # Rough estimate: 500g food/day for child
+col1, col2, col3, col4, col5 = st.columns(5)
 
-# Water
-st.sidebar.markdown("#### Water")
-water_input_type = st.sidebar.radio(
-    "Water Input Type",
-    ["μg/L (PPB)", "μg/kg/day"],
-    help="Lead concentration in drinking water"
-)
+# WATER column
+with col1:
+    st.markdown("**Water**")
+    water_input = st.number_input("Concentration (PPB)", 0.0, 50000.0, 0.9, 0.1, key="water_conc")
+    water_ug_l = water_input  # 1 PPB = 1 μg/L
 
-if water_input_type == "μg/L (PPB)":
-    water_ug_l = st.sidebar.number_input("Water Lead (μg/L)", 0.0, 50.0, 1.0, 0.1)
-else:
-    water_ug_kg_day = st.sidebar.number_input("Water Lead (μg/kg/day)", 0.0, 5.0, 0.1, 0.01)
-    water_ug_l = water_ug_kg_day * 20  # Rough conversion
+    water_scale_pct = st.number_input(
+        "Intake Scale (%)",
+        min_value=1.0,
+        max_value=10000.0,
+        value=100.0,
+        step=10.0,
+        key="water_scale"
+    )
+    water_scale_factor = water_scale_pct / 100.0
 
-# Soil/Dust (optional)
-with st.sidebar.expander("Soil/Dust (Optional)"):
-    include_soil = st.checkbox("Include soil exposure")
-    if include_soil:
-        soil_ppm = st.number_input("Soil Lead (PPM)", 0, 5000, 200, 10)
-    else:
-        soil_ppm = 0
+    with st.expander("Schedule"):
+        # Excel defaults
+        intake_ages_days = [0, 91.25, 365, 3650, 5475, 9125, 18250]
+        intake_ages_years = [d/365 for d in intake_ages_days]
+        intake_amt_liters = [0.2, 0.3, 0.35, 0.45, 0.55, 0.7, 1.04]
+        scaled_intake = [amt * water_scale_factor for amt in intake_amt_liters]
+        intake_df = pd.DataFrame({
+            'Age (years)': intake_ages_years,
+            'Intake (L/day)': scaled_intake
+        })
+        st.dataframe(intake_df, use_container_width=True, hide_index=True)
 
-    include_dust = st.checkbox("Include dust exposure")
-    if include_dust:
-        dust_ppm = st.number_input("Dust Lead (PPM)", 0, 5000, 150, 10)
-    else:
-        dust_ppm = 0
+# FOOD column
+with col2:
+    st.markdown("**Food**")
+    food_ug_day = st.number_input("Amount (μg/day)", 0.0, 1000.0, 10.0, 0.1, key="food_amt")
 
-# Run button
-run_button = st.sidebar.button("Calculate Blood Lead Level", type="primary", use_container_width=True)
+# SOIL column
+with col3:
+    st.markdown("**Soil**")
+    soil_ppm = st.number_input("Concentration (PPM)", 0, 10000, 25, 10, key="soil_conc")
+
+    soil_scale_pct = st.number_input(
+        "Intake Scale (%)",
+        min_value=1.0,
+        max_value=10000.0,
+        value=100.0,
+        step=10.0,
+        key="soil_scale"
+    )
+    soil_scale_factor = soil_scale_pct / 100.0
+
+    with st.expander("Schedule"):
+        # Excel defaults
+        intake_ages_days = [0, 91.25, 365, 1825, 3650, 5475]
+        intake_ages_years = [d/365 for d in intake_ages_days]
+        intake_amt_grams = [0.018, 0.032, 0.041, 0.036, 0.027, 0.014]
+        scaled_intake = [amt * soil_scale_factor for amt in intake_amt_grams]
+        intake_df = pd.DataFrame({
+            'Age (years)': intake_ages_years,
+            'Intake (g/day)': scaled_intake
+        })
+        st.dataframe(intake_df, use_container_width=True, hide_index=True)
+
+# DUST column
+with col4:
+    st.markdown("**Dust**")
+    dust_ppm = st.number_input("Concentration (PPM)", 0, 10000, 175, 10, key="dust_conc")
+
+    dust_scale_pct = st.number_input(
+        "Intake Scale (%)",
+        min_value=1.0,
+        max_value=10000.0,
+        value=100.0,
+        step=10.0,
+        key="dust_scale"
+    )
+    dust_scale_factor = dust_scale_pct / 100.0
+
+    with st.expander("Schedule"):
+        # Excel defaults (g/day)
+        intake_ages_days = [0, 91.25, 365, 1825, 3650, 5475]
+        intake_ages_years = [d/365 for d in intake_ages_days]
+        intake_amt_grams = [0.022, 0.039, 0.05, 0.044, 0.033, 0.017]
+        scaled_intake = [amt * dust_scale_factor for amt in intake_amt_grams]
+        intake_df = pd.DataFrame({
+            'Age (years)': intake_ages_years,
+            'Intake (g/day)': scaled_intake
+        })
+        st.dataframe(intake_df, use_container_width=True, hide_index=True)
+
+# AIR column
+with col5:
+    st.markdown("**Air**")
+    air_ug_m3 = st.number_input("Concentration (μg/m³)", 0.0, 1000.0, 0.01, 0.01, key="air_conc")
+
+    air_scale_pct = st.number_input(
+        "Intake Scale (%)",
+        min_value=1.0,
+        max_value=10000.0,
+        value=100.0,
+        step=10.0,
+        key="air_scale"
+    )
+    air_scale_factor = air_scale_pct / 100.0
+
+    with st.expander("Schedule"):
+        intake_ages_years = [0, 1, 2, 3, 6, 11, 16, 21, 31, 51, 61, 71, 81]
+        intake_amt_m3 = [5.4, 8, 8.9, 10.1, 12, 15.2, 16.3, 15.7, 16, 15.7, 14.2, 12.9, 12.2]
+        scaled_intake = [amt * air_scale_factor for amt in intake_amt_m3]
+        intake_df = pd.DataFrame({
+            'Age (years)': intake_ages_years,
+            'Intake (m³/day)': scaled_intake
+        })
+        st.dataframe(intake_df, use_container_width=True, hide_index=True)
+
+# Run button - centered and prominent
+st.markdown("---")
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    run_button = st.button("Calculate Blood Lead Level", type="primary", use_container_width=True)
+
+st.markdown("---")
 
 # Main content area
 if run_button:
     with st.spinner("Running AALM simulation..."):
         try:
-            # Find AALM executable - now bundled with the app!
+            # Find AALM executable in user data directory
+            import os
+            user_data_dir = Path.home() / "Library" / "Application Support" / "Easy AALM"
             script_dir = Path(__file__).parent
             aalm_paths = [
+                user_data_dir / "aalm_original" / "AALM_64.exe",  # User data directory (primary)
                 script_dir / "aalm_original" / "AALM_64.exe",  # Bundled version
                 Path("aalm_original/AALM_64.exe"),  # Relative path
-                Path("AALM_64.exe"),  # Current directory
             ]
 
             aalm_exe = None
@@ -107,63 +196,29 @@ if run_button:
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir = Path(tmpdir)
 
-                # Generate input file
-                template_path = script_dir / "aalm_original" / "Examples" / "LeggettInput_Ex1a.txt"
+                # Generate input file using shared module
+                from fortran_input_generator import generate_fortran_input
+
+                template_path = aalm_exe.parent / "Examples" / "LeggettInput_ExcelDefaults.txt"
                 if not template_path.exists():
-                    st.error(f"Template file not found at {template_path}. Please ensure aalm_original/Examples directory exists.")
+                    st.error(f"Template file not found at {template_path}")
                     st.stop()
 
-                # Read template
-                with open(template_path, 'r') as f:
-                    template_lines = f.readlines()
-
-                # Modify template with user inputs
-                modified_lines = []
-                for line_idx, line in enumerate(template_lines):
-                    parts = line.rstrip().split(',')
-
-                    # Change simulation name (first line) to WebSim
-                    if line_idx == 0 and len(parts) > 0 and parts[0] == 'Name':
-                        parts[1] = 'WebSim'
-                        modified_lines.append(','.join(parts) + '\n')
-
-                    # Modify simulation duration
-                    elif len(parts) > 1 and parts[0] == 'Sim' and parts[1] == 'age_range':
-                        parts[3] = str(age_range[0])
-                        parts[4] = str(int(age_range[1] * 365))
-                        modified_lines.append(','.join(parts) + '\n')
-
-                    # Modify sex
-                    elif len(parts) > 1 and parts[0] == 'Growth' and parts[1] == 'sex':
-                        parts[3] = '1' if sex == "Female" else '0'
-                        modified_lines.append(','.join(parts) + '\n')
-
-                    # Modify food intake
-                    elif len(parts) > 1 and parts[0] == 'Food' and parts[1] == 'source_amt1':
-                        num_vals = int(parts[2])
-                        # Set all values to constant food intake
-                        for i in range(num_vals):
-                            if len(parts) > 3 + i:
-                                parts[3 + i] = f"{food_ug_day:.2f}"
-                        modified_lines.append(','.join(parts) + '\n')
-
-                    # Modify water concentration
-                    elif len(parts) > 1 and parts[0] == 'Water' and parts[1] == 'concs1':
-                        parts[3] = f"{water_ug_l:.2f}"
-                        modified_lines.append(','.join(parts) + '\n')
-
-                    # Modify soil concentration
-                    elif len(parts) > 1 and parts[0] == 'Soil' and parts[1] == 'concs1':
-                        parts[3] = f"{soil_ppm}"
-                        modified_lines.append(','.join(parts) + '\n')
-
-                    # Modify dust concentration
-                    elif len(parts) > 1 and parts[0] == 'Dust' and parts[1] == 'concs1':
-                        parts[3] = f"{dust_ppm}"
-                        modified_lines.append(','.join(parts) + '\n')
-
-                    else:
-                        modified_lines.append(line)
+                modified_lines = generate_fortran_input(
+                    template_path=template_path,
+                    age_range=age_range,
+                    sex=sex,
+                    food_ug_day=food_ug_day,
+                    water_ug_l=water_ug_l,
+                    water_scale_factor=water_scale_factor,
+                    soil_ppm=soil_ppm,
+                    soil_scale_factor=soil_scale_factor,
+                    dust_ppm=dust_ppm,
+                    dust_scale_factor=dust_scale_factor,
+                    air_ug_m3=air_ug_m3,
+                    air_scale_factor=air_scale_factor,
+                    sim_name='WebSim'
+                )
 
                 # Write input file in AALM's directory (it needs to run from there)
                 aalm_dir = aalm_exe.parent
@@ -176,38 +231,20 @@ if run_button:
                 output_dir.mkdir(exist_ok=True)
 
                 # Run AALM from its own directory (important!)
-                # On macOS, we need Wine to run Windows executables
+                # On macOS, use Wine to run the Windows executable
                 import platform
-                if platform.system() == "Darwin":  # macOS
-                    # Check if wine is available
-                    wine_check = subprocess.run(["which", "wine"], capture_output=True)
-                    if wine_check.returncode != 0:
-                        st.error("Wine is not installed. On macOS, Wine is required to run AALM.")
-                        st.markdown("""
-                        **To install Wine:**
-                        1. Install Homebrew: https://brew.sh
-                        2. Run: `brew install wine-stable`
-                        3. Restart this app
-                        """)
-                        st.stop()
-
-                    # Run with wine
-                    result = subprocess.run(
-                        ["wine", str(aalm_exe), str(input_file.name)],
-                        cwd=str(aalm_dir),
-                        capture_output=True,
-                        text=True,
-                        timeout=60
-                    )
+                if platform.system() == "Darwin":
+                    cmd = ["wine", str(aalm_exe), str(input_file.name)]
                 else:
-                    # Windows - run directly
-                    result = subprocess.run(
-                        [str(aalm_exe), str(input_file.name)],
-                        cwd=str(aalm_dir),
-                        capture_output=True,
-                        text=True,
-                        timeout=60
-                    )
+                    cmd = [str(aalm_exe), str(input_file.name)]
+
+                result = subprocess.run(
+                    cmd,
+                    cwd=str(aalm_dir),  # Run from AALM directory
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
 
                 if result.returncode != 0:
                     st.error(f"AALM simulation failed:\n{result.stderr}")
@@ -245,10 +282,10 @@ if run_button:
                         output_csv = max(out_csvs, key=lambda p: p.stat().st_mtime)
 
                 # Display results
+                st.markdown("## Results")
                 st.success("Simulation Complete!")
 
-                st.markdown("---")
-                st.markdown("### Results Summary")
+                st.markdown("### Summary")
 
                 col1, col2, col3 = st.columns(3)
                 with col1:
@@ -299,6 +336,52 @@ if run_button:
 
                             st.plotly_chart(fig, use_container_width=True)
 
+                        # Fortran input file as hidden expander
+                        with st.expander("Show Fortran Input File"):
+                            st.caption("This shows the parameters sent to the AALM Fortran model")
+
+                            # Read and display the input file
+                            if input_file.exists():
+                                # Parse input file into a table
+                                input_data = []
+                                with open(input_file, 'r') as f:
+                                    for line in f:
+                                        line = line.strip()
+                                        if line:
+                                            parts = line.split(',')
+                                            input_data.append(parts)
+
+                                # Create DataFrame with appropriate columns
+                                max_cols = max(len(row) for row in input_data) if input_data else 0
+                                col_names = ['Parameter', 'Variable', 'Count'] + [f'Value{i}' for i in range(1, max_cols - 2)]
+
+                                # Pad rows to have same length
+                                padded_data = []
+                                for row in input_data:
+                                    padded_row = row + [''] * (max_cols - len(row))
+                                    padded_data.append(padded_row)
+
+                                input_df = pd.DataFrame(padded_data, columns=col_names[:max_cols])
+
+                                # Display as table
+                                st.dataframe(
+                                    input_df,
+                                    use_container_width=True,
+                                    height=400
+                                )
+
+                                # Also provide download button for input file
+                                with open(input_file, 'r') as f:
+                                    input_file_content = f.read()
+                                st.download_button(
+                                    "Download Input File",
+                                    input_file_content,
+                                    "LeggettInput_web.txt",
+                                    "text/plain"
+                                )
+                            else:
+                                st.warning("Input file not found")
+
                         # Export options
                         st.markdown("---")
                         st.markdown("### Export Data")
@@ -344,36 +427,8 @@ if run_button:
             st.code(traceback.format_exc())
 
 else:
-    # Initial state - show instructions
-    st.info("Enter your exposure parameters in the sidebar and click **Calculate**")
-
-    st.markdown("""
-    ### How to Use This Tool
-
-    This tool helps field workers quickly estimate Blood Lead Levels (BLL) from:
-    - **XRF measurements** of soil/dust
-    - **Lab results** for food and water samples
-
-    #### Steps:
-    1. **Set age range**
-    2. **Choose sex** - Male or Female (affects body weight parameters)
-    3. **Enter lead exposure**:
-       - **Food**: Micrograms per day from dietary intake
-       - **Water**: Micrograms per liter (PPB) from tap water
-       - **Soil/Dust** (optional): PPM from XRF readings
-
-    4. **Click Calculate** to run the simulation
-    5. **View results**: BLL graph and summary statistics
-    6. **Export**: Download data as CSV or Excel
-
-    #### Example Scenarios:
-    - **Low exposure**: 2 μg/day food, 1 μg/L water → BLL ~1-2 μg/dL
-    - **Moderate**: 5 μg/day food, 5 μg/L water → BLL ~2-3 μg/dL
-    - **High**: 10 μg/day food, 15 μg/L water, 500 PPM soil → BLL >5 μg/dL
-
-    ---
-    **Based on EPA All-Ages Lead Model (AALM) v3.1**
-    """)
+    # Initial state
+    st.info("Enter your exposure parameters above and click **Calculate Blood Lead Level**")
 
 # Footer
 st.markdown("---")
