@@ -137,6 +137,88 @@ This wrapper code is provided as-is for research and educational purposes.
 
 The AALM Fortran executable is public domain (U.S. Government work).
 
+## Testing
+
+### Automated Test (Unix/macOS)
+
+Run the end-to-end test to verify the simulation works:
+
+```bash
+python3 test_e2e.py
+```
+
+This test:
+- Generates an AALM input file with test parameters (5.0 PPM water, 1.5x scale factor)
+- Runs the AALM simulation via Wine
+- Verifies output generation and calculates Blood Lead Level
+- Reports success/failure
+
+**Prerequisites:**
+- Wine installed (`brew install wine-stable` on macOS)
+- AALM app run at least once (to set up files)
+
+### Fortran Input Validation Tests
+
+Verify that the application generates correct Fortran input matching EPA Excel defaults:
+
+```bash
+# Test the shared input generation module (recommended)
+python3 test_shared_module.py
+
+# Or test via the standalone generator script
+python3 generate_default_input.py
+python3 test_fortran_input_defaults.py
+```
+
+**Architecture**: Both `app.py` (the actual UI) and `generate_default_input.py` (test script) use a shared module `fortran_input_generator.py` for input generation. This ensures consistency and allows the test to validate the same code used by the app.
+
+These tests:
+- Validate the shared `fortran_input_generator` module
+- Compare generated Fortran input against golden reference file
+- Ensure default parameters match EPA Excel defaults (AALM_Inputs_v3-1.xlsm)
+- Validate intake schedules, concentrations, and RBA values
+- Report any differences with detailed diff output
+
+**Default parameters tested:**
+- Age Range: 0-90 years
+- Sex: Male
+- Water: 0.9 PPB (7-point intake schedule)
+- Food: 10.0 μg/day (7-point schedule)
+- Soil: 25 PPM (6-point intake schedule, RBA=0.6)
+- Dust: 175 PPM (6-point intake schedule, RBA=0.6)
+- Air: 0.01 μg/m³ (13-point intake schedule)
+
+### Integration Test with Screenshots
+
+Automated browser test that captures screenshots:
+
+```bash
+# Install Playwright first (one-time setup)
+pip install playwright
+playwright install chromium
+
+# Run the test
+python3 test_with_screenshots.py
+```
+
+This test:
+- Starts Streamlit in the background
+- Opens automated browser (Chromium)
+- Fills in test parameters (5.0 PPM water, log-scaled intake)
+- Clicks Calculate button
+- Waits for AALM simulation to complete
+- Captures screenshots at each step
+- Saves screenshots to `test_screenshots/` directory
+
+Screenshots captured:
+1. `01_initial.png` - Initial app state
+2. `02_form_filled.png` - Form with parameters entered
+3. `03_results.png` - Complete results page
+4. `04_graph.png` - Blood lead level graph closeup
+5. `05_fortran_input.png` - Fortran input file view
+
+Use this test for visual regression testing and creating feedback loop for UI iterations.
+
 ## Support
 
 For issues with the wrapper: [GitHub Issues]
