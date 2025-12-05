@@ -92,7 +92,9 @@ fi
 echo ""
 echo "Verifying signature..."
 codesign --verify --deep --strict --verbose=2 "Easy AALM.app"
-spctl -a -t exec -vv "Easy AALM.app"
+echo ""
+echo "Note: spctl may report 'rejected' until notarization completes..."
+spctl -a -t exec -vv "Easy AALM.app" || true
 
 echo ""
 echo "Step 4: Creating zip for notarization..."

@@ -34,6 +34,74 @@ if [ ! -f "$USER_DATA_DIR/venv/bin/python" ]; then
         exit 1
     fi
 
+    # On macOS, check if Wine is installed (needed to run AALM Windows executable)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        if ! command -v wine &> /dev/null; then
+            echo "Wine is not installed. Wine is required to run AALM on macOS."
+            echo ""
+
+            # Check if Homebrew is installed
+            if ! command -v brew &> /dev/null; then
+                echo "Homebrew is not installed. Installing Homebrew first..."
+                echo ""
+                echo "Please follow the prompts to install Homebrew."
+                echo "You may be asked for your password."
+                echo ""
+
+                # Install Homebrew
+                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+                if [ $? -ne 0 ]; then
+                    echo ""
+                    echo "ERROR: Failed to install Homebrew"
+                    echo ""
+                    echo "Please install Homebrew manually from https://brew.sh"
+                    echo "Then run this app again."
+                    echo ""
+                    read -p "Press Enter to exit..."
+                    exit 1
+                fi
+
+                # Add Homebrew to PATH for this session
+                if [[ $(uname -m) == "arm64" ]]; then
+                    eval "$(/opt/homebrew/bin/brew shellenv)"
+                else
+                    eval "$(/usr/local/bin/brew shellenv)"
+                fi
+            fi
+
+            echo "Installing Wine..."
+            echo "This may take several minutes..."
+            echo ""
+
+            # Try wine-stable first, fallback to wine-crossover
+            brew install wine-stable 2>/dev/null
+            if [ $? -ne 0 ]; then
+                echo "wine-stable not available, trying alternative..."
+                brew tap gcenx/wine 2>/dev/null
+                brew install --cask wine-crossover
+            fi
+
+            if ! command -v wine &> /dev/null; then
+                echo ""
+                echo "ERROR: Failed to install Wine"
+                echo ""
+                echo "Please install Wine manually:"
+                echo "  brew tap gcenx/wine"
+                echo "  brew install --cask wine-crossover"
+                echo ""
+                echo "Then run this app again."
+                echo ""
+                read -p "Press Enter to exit..."
+                exit 1
+            fi
+
+            echo ""
+            echo "Wine installed successfully!"
+            echo ""
+        fi
+    fi
+
     # Create virtual environment
     python3 -m venv "$USER_DATA_DIR/venv"
     if [ $? -ne 0 ]; then
