@@ -33,6 +33,11 @@ That's it! Setup runs automatically on first launch, then the app opens in your 
 
 The app is **fully signed and notarized** by Apple - no security warnings!
 
+On first run, the app will automatically:
+- Install Python dependencies (Streamlit, Pandas, Plotly)
+- Install Wine (required to run the AALM Windows executable on Mac)
+- Install Homebrew if needed
+
 A Terminal window will open showing setup progress (first time only) and server status. The app will automatically open in your browser at `http://localhost:8501`.
 
 **Option 2: Alternative Launcher**
@@ -85,9 +90,9 @@ easy-aalm/
 ## Requirements
 
 - Python 3.8+
-- Streamlit, Pandas, Plotly (installed via requirements.txt)
+- Streamlit, Pandas, Plotly (installed automatically)
 - AALM v3.1 executable (download from EPA)
-- Wine (Mac/Linux only)
+- Wine (Mac/Linux only - installed automatically on Mac)
 
 ## Design Philosophy
 
@@ -114,7 +119,7 @@ This wrapper follows the "Easy AALM" requirements:
 
 - Simplified input model (constant exposure only)
 - Requires AALM executable (Windows binary)
-- Mac/Linux need Wine installed
+- Mac/Linux need Wine (installed automatically on Mac)
 - Single scenario at a time (no batch processing)
 
 ## Original AALM
