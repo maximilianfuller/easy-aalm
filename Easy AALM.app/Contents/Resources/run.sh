@@ -74,13 +74,9 @@ if [ ! -f "$USER_DATA_DIR/venv/bin/python" ]; then
             echo "This may take several minutes..."
             echo ""
 
-            # Try wine-stable first, fallback to wine-crossover
-            brew install wine-stable 2>/dev/null
-            if [ $? -ne 0 ]; then
-                echo "wine-stable not available, trying alternative..."
-                brew tap gcenx/wine 2>/dev/null
-                brew install --cask wine-crossover
-            fi
+            # Install wine-crossover (works on both Intel and Apple Silicon)
+            brew tap gcenx/wine
+            brew install --cask wine-crossover
 
             if ! command -v wine &> /dev/null; then
                 echo ""
