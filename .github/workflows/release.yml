@@ -1,0 +1,141 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller pywebview
+
+      - name: Download Wine Crossover
+        run: |
+          curl -L -o wine-crossover.tar.xz "https://github.com/Gcenx/winecx/releases/download/crossover-wine-23.7.1-1/wine-crossover-23.7.1-1-osx64.tar.xz"
+          mkdir -p bundled_wine
+          tar -xf wine-crossover.tar.xz -C bundled_wine
+          rm wine-crossover.tar.xz
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller easy_aalm.spec --clean --noconfirm
+
+      - name: Create bundled Python venv
+        run: |
+          python -m venv "dist/Easy AALM.app/Contents/Resources/venv"
+          "dist/Easy AALM.app/Contents/Resources/venv/bin/pip" install streamlit pandas plotly openpyxl
+
+      - name: Bundle Wine
+        run: |
+          cp -R "bundled_wine/Wine Crossover.app" "dist/Easy AALM.app/Contents/Resources/"
+
+      - name: Create DMG
+        run: |
+          hdiutil create -volname "Easy AALM" -srcfolder "dist/Easy AALM.app" -ov -format UDZO "Easy-AALM-macOS.dmg"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Easy-AALM-macOS
+          path: Easy-AALM-macOS.dmg
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller pywebview
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller easy_aalm_windows.spec --clean --noconfirm
+
+      - name: Create bundled Python venv
+        run: |
+          python -m venv "dist\EasyAALM\venv"
+          dist\EasyAALM\venv\Scripts\pip install streamlit pandas plotly openpyxl
+
+      - name: Create ZIP
+        run: |
+          Compress-Archive -Path "dist\EasyAALM" -DestinationPath "Easy-AALM-Windows.zip"
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Easy-AALM-Windows
+          path: Easy-AALM-Windows.zip
+
+  release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Easy-AALM-macOS
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Easy-AALM-Windows
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Easy AALM ${{ steps.version.outputs.version }}
+          body: |
+            ## Easy AALM - Lead Exposure Calculator
+
+            A desktop application for running EPA's All-Ages Lead Model (AALM).
+
+            ### Downloads
+            - **macOS**: `Easy-AALM-macOS.dmg` - Double-click to open, drag to Applications
+            - **Windows**: `Easy-AALM-Windows.zip` - Extract and run `Easy AALM.exe`
+
+            ### What's Included
+            - Bundled Python environment with Streamlit
+            - AALM model executables
+            - Wine (macOS only, for running Windows AALM executable)
+          files: |
+            Easy-AALM-macOS.dmg
+            Easy-AALM-Windows.zip
+          draft: false
+          prerelease: false
