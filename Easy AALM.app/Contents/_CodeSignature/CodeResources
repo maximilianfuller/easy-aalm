@@ -52,6 +52,10 @@
 		<data>
 		IUpqsDWOBedsnI3a8FzQcR3a3/Q=
 		</data>
+		<key>Resources/aalm_original/Examples/LeggettInput_ExcelDefaults.txt</key>
+		<data>
+		k2Sq27ye03MV6noRNT5QaRQO1JM=
+		</data>
 		<key>Resources/aalm_original/LeggettInput.txt</key>
 		<data>
 		IDcAWvM2QX7kAsPn/+UveHXfqFw=
@@ -289,6 +293,17 @@
 			<key>hash2</key>
 			<data>
 			lvtrwz0na6qOpHS2JwsLCkKXvolrEt3x2nMi+ehMl0o=
+			</data>
+		</dict>
+		<key>Resources/aalm_original/Examples/LeggettInput_ExcelDefaults.txt</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			k2Sq27ye03MV6noRNT5QaRQO1JM=
+			</data>
+			<key>hash2</key>
+			<data>
+			v2yRV0MHeAVAT8tX2o5gWDxgB4UIlx+qCqcr6RhbOG8=
 			</data>
 		</dict>
 		<key>Resources/aalm_original/LeggettInput.txt</key>
