@@ -251,12 +251,19 @@ if run_button:
                 else:
                     cmd = [str(aalm_exe), str(input_file.name)]
 
+                # Set up environment to prevent Wine from accessing user folders
+                wine_env = os.environ.copy()
+                wine_env['WINEPREFIX'] = str(script_dir / '.wine')
+                wine_env['WINEDLLOVERRIDES'] = 'winemenubuilder.exe=d'
+                wine_env['WINEDEBUG'] = '-all'  # Suppress Wine debug output
+
                 result = subprocess.run(
                     cmd,
                     cwd=str(aalm_dir),  # Run from AALM directory
                     capture_output=True,
                     text=True,
-                    timeout=60
+                    timeout=60,
+                    env=wine_env
                 )
 
                 if result.returncode != 0:

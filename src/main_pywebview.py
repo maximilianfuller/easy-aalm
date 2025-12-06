@@ -86,6 +86,15 @@ def start_streamlit(port, app_dir):
     env['STREAMLIT_SERVER_HEADLESS'] = 'true'
     env['STREAMLIT_BROWSER_GATHER_USAGE_STATS'] = 'false'
 
+    # Redirect HOME to app directory to prevent file access prompts
+    # This stops Streamlit/Wine from looking in ~/Desktop, ~/Documents, etc.
+    env['HOME'] = str(app_dir)
+    env['STREAMLIT_HOME'] = str(app_dir)
+
+    # Wine-specific settings to prevent user folder access
+    env['WINEPREFIX'] = str(app_dir / '.wine')
+    env['WINEDLLOVERRIDES'] = 'winemenubuilder.exe=d'  # Disable menu/desktop integration
+
     # Add bundled Wine to PATH if available
     bundled_wine = get_bundled_wine()
     if bundled_wine:
@@ -123,15 +132,18 @@ LOADING_HTML = """
 <!DOCTYPE html>
 <html>
 <head><style>
-body { font-family: -apple-system, sans-serif; background: linear-gradient(135deg, #667eea, #764ba2);
+body { font-family: -apple-system, SF Pro Text, sans-serif; background: linear-gradient(135deg, #667eea, #764ba2);
        height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; color: white; }
-.spinner { width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3); border-top-color: white;
-           border-radius: 50%; animation: spin 1s linear infinite; margin: 30px auto; }
-@keyframes spin { to { transform: rotate(360deg); } }
 h1 { font-size: 2.5em; margin-bottom: 10px; }
+#status { font-size: 14px; opacity: 0.9; margin-top: 20px; }
+#log { font-family: SF Mono, monospace; font-size: 12px; text-align: left; background: rgba(0,0,0,0.2);
+       padding: 15px; border-radius: 8px; margin-top: 20px; max-width: 500px; min-height: 60px; }
 </style></head>
 <body><div style="text-align:center">
-<h1>Easy AALM</h1><p>Lead Exposure Calculator</p><div class="spinner"></div><p>Starting...</p>
+<h1>Easy AALM</h1>
+<p>Lead Exposure Calculator</p>
+<div id="status">Initializing...</div>
+<div id="log"></div>
 </div></body></html>
 """
 
@@ -144,16 +156,52 @@ def main():
 
     win = webview.create_window('Easy AALM', html=LOADING_HTML, width=1400, height=900, min_size=(1000, 700), text_select=True)
 
+    def log(msg):
+        """Update the loading screen with a log message."""
+        escaped = msg.replace("'", "\\'").replace("\n", "\\n")
+        win.evaluate_js(f"document.getElementById('log').innerHTML += '{escaped}<br>';")
+
+    def status(msg):
+        """Update the status message."""
+        escaped = msg.replace("'", "\\'")
+        win.evaluate_js(f"document.getElementById('status').innerText = '{escaped}';")
+
     def start_backend():
+        time.sleep(0.5)  # Wait for window to be ready
+
+        status("Finding Python environment...")
+        python_exe = find_venv_python(app_dir)
+        log(f"Python: {python_exe}")
+
+        status("Starting Streamlit server...")
         err = start_streamlit(port, app_dir)
         if err:
-            win.load_html(f"<html><body style='padding:40px;font-family:sans-serif;'><h1>Error</h1><p>{err}</p></body></html>")
+            status("Error starting Streamlit")
+            log(f"Error: {err}")
             return
-        if wait_for_server(port):
+
+        log(f"Streamlit starting on port {port}")
+        status("Waiting for server to be ready...")
+
+        start_time = time.time()
+        while time.time() - start_time < 60:
+            try:
+                with socket.socket() as s:
+                    s.settimeout(1)
+                    if s.connect_ex(('127.0.0.1', port)) == 0:
+                        log("Server is ready!")
+                        status("Loading application...")
+                        time.sleep(0.3)
+                        win.load_url(f'http://127.0.0.1:{port}')
+                        return
+            except:
+                pass
+            elapsed = int(time.time() - start_time)
+            status(f"Waiting for server... ({elapsed}s)")
             time.sleep(0.5)
-            win.load_url(f'http://127.0.0.1:{port}')
-        else:
-            win.load_html("<html><body style='padding:40px;font-family:sans-serif;'><h1>Timeout</h1><p>Could not start.</p></body></html>")
+
+        status("Timeout waiting for server")
+        log("Server did not start within 60 seconds")
 
     import threading
     threading.Thread(target=start_backend, daemon=True).start()
