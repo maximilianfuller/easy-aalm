@@ -101,18 +101,25 @@ jobs:
           # Remove extended attributes
           xattr -cr "Easy AALM.app"
 
-          # Sign ALL Mach-O binaries in the entire app bundle (Wine, venv, frameworks, etc.)
-          echo "Signing all Mach-O binaries..."
-          find "Easy AALM.app" -type f | while read file; do
+          # Sign Wine binaries with special entitlements (Wine needs JIT)
+          echo "Signing Wine binaries with entitlements..."
+          find "Easy AALM.app/Contents/Resources/Wine Crossover.app" -type f | while read file; do
             if file "$file" | grep -q "Mach-O"; then
-              echo "Signing: $file"
-              codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$file" 2>/dev/null || true
+              codesign --force --options runtime --timestamp --entitlements ../wine-entitlements.plist --sign "$SIGNING_IDENTITY" "$file" 2>/dev/null || true
             fi
           done
 
-          # Sign nested bundles
+          # Sign Wine bundle with entitlements
           echo "Signing Wine Crossover.app..."
-          codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" "Easy AALM.app/Contents/Resources/Wine Crossover.app" || true
+          codesign --force --deep --options runtime --timestamp --entitlements ../wine-entitlements.plist --sign "$SIGNING_IDENTITY" "Easy AALM.app/Contents/Resources/Wine Crossover.app" || true
+
+          # Sign other Mach-O binaries (venv, frameworks) without Wine entitlements
+          echo "Signing other binaries..."
+          find "Easy AALM.app" -type f -not -path "*/Wine Crossover.app/*" | while read file; do
+            if file "$file" | grep -q "Mach-O"; then
+              codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$file" 2>/dev/null || true
+            fi
+          done
 
           # Sign the main app with hardened runtime and timestamp
           echo "Signing Easy AALM.app..."
