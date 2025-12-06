@@ -178,17 +178,21 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller "pywebview[cef]"
+          pip install pyinstaller pywebview pythonnet
 
       - name: Build with PyInstaller
         run: |
           pyinstaller easy_aalm_windows.spec --clean --noconfirm
 
-      - name: Copy CEF files
+      - name: Bundle pythonnet runtime
         run: |
-          # Copy cefpython3 files into the build
-          $cefPath = python -c "import cefpython3; import os; print(os.path.dirname(cefpython3.__file__))"
-          Copy-Item -Path "$cefPath\*" -Destination "dist\EasyAALM\" -Recurse -Force
+          # Copy clr_loader and pythonnet files
+          $clrPath = python -c "import clr_loader; import os; print(os.path.dirname(clr_loader.__file__))"
+          Copy-Item -Path "$clrPath" -Destination "dist\EasyAALM\clr_loader" -Recurse -Force
+
+          # Copy pythonnet
+          $pynetPath = python -c "import pythonnet; import os; print(os.path.dirname(pythonnet.__file__))"
+          Copy-Item -Path "$pynetPath" -Destination "dist\EasyAALM\pythonnet" -Recurse -Force
 
       - name: Create bundled Python venv
         run: |
