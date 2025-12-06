@@ -75,7 +75,7 @@ with col1:
             'Age (years)': intake_ages_years,
             'Intake (L/day)': scaled_intake
         })
-        st.dataframe(intake_df, use_container_width=True, hide_index=True)
+        st.dataframe(intake_df, width='stretch', hide_index=True)
 
 # FOOD column
 with col2:
@@ -107,7 +107,7 @@ with col3:
             'Age (years)': intake_ages_years,
             'Intake (g/day)': scaled_intake
         })
-        st.dataframe(intake_df, use_container_width=True, hide_index=True)
+        st.dataframe(intake_df, width='stretch', hide_index=True)
 
 # DUST column
 with col4:
@@ -134,7 +134,7 @@ with col4:
             'Age (years)': intake_ages_years,
             'Intake (g/day)': scaled_intake
         })
-        st.dataframe(intake_df, use_container_width=True, hide_index=True)
+        st.dataframe(intake_df, width='stretch', hide_index=True)
 
 # AIR column
 with col5:
@@ -159,13 +159,13 @@ with col5:
             'Age (years)': intake_ages_years,
             'Intake (m³/day)': scaled_intake
         })
-        st.dataframe(intake_df, use_container_width=True, hide_index=True)
+        st.dataframe(intake_df, width='stretch', hide_index=True)
 
 # Run button - centered and prominent
 st.markdown("---")
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    run_button = st.button("Calculate Blood Lead Level", type="primary", use_container_width=True)
+    run_button = st.button("Calculate Blood Lead Level", type="primary", width='stretch')
 
 st.markdown("---")
 
@@ -343,7 +343,7 @@ if run_button:
                                 height=400
                             )
 
-                            st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, width='stretch')
 
                         # Fortran input file as hidden expander
                         with st.expander("Show Fortran Input File"):
@@ -375,7 +375,7 @@ if run_button:
                                 # Display as table
                                 st.dataframe(
                                     input_df,
-                                    use_container_width=True,
+                                    width='stretch',
                                     height=400
                                 )
 
