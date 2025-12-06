@@ -18,14 +18,18 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Get the directory containing this script and navigate to project root
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 USER_DATA_DIR="$HOME/Library/Application Support/Easy AALM"
-APP_BUNDLE="./Easy AALM.app"
+APP_BUNDLE="$PROJECT_ROOT/Easy AALM.app"
 RUN_SCRIPT="$APP_BUNDLE/Contents/Resources/run.sh"
 
 # Check if app bundle exists
 if [ ! -d "$APP_BUNDLE" ]; then
     echo -e "${RED}Error: App bundle not found at $APP_BUNDLE${NC}"
-    echo "Please run this script from the easy-aalm directory"
+    echo "Looked in: $PROJECT_ROOT"
     exit 1
 fi
 
