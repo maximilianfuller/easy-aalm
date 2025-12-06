@@ -208,7 +208,8 @@ if run_button:
                 # Generate input file using shared module
                 from fortran_input_generator import generate_fortran_input
 
-                template_path = aalm_exe.parent / "Examples" / "LeggettInput_ExcelDefaults.txt"
+                # Template file is in the same directory as this script
+                template_path = Path(__file__).parent / "templates" / "LeggettInput_ExcelDefaults.txt"
                 if not template_path.exists():
                     st.error(f"Template file not found at {template_path}")
                     st.stop()
