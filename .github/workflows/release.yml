@@ -89,9 +89,14 @@ jobs:
 
           # Sign all Wine binaries first (they need individual signing with timestamp)
           echo "Signing Wine binaries..."
-          find "Easy AALM.app/Contents/Resources/Wine Crossover.app" -type f \( -perm +111 -o -name "*.dylib" -o -name "*.so" \) | while read binary; do
-            echo "Signing: $binary"
-            codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$binary" 2>/dev/null || true
+
+          # Find all executable binaries and libraries
+          find "Easy AALM.app/Contents/Resources/Wine Crossover.app" -type f | while read file; do
+            # Check if it's a Mach-O binary
+            if file "$file" | grep -q "Mach-O"; then
+              echo "Signing: $file"
+              codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$file" 2>/dev/null || true
+            fi
           done
 
           # Sign Wine Crossover.app bundle
