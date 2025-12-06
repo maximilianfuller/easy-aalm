@@ -28,7 +28,12 @@ def get_app_dir():
             bundle_dir = Path(sys.executable).parent.parent / 'Resources'
             if bundle_dir.exists():
                 return bundle_dir
-        return Path(sys.executable).parent
+        # On Windows, PyInstaller puts files in _internal subdirectory
+        exe_dir = Path(sys.executable).parent
+        internal_dir = exe_dir / '_internal'
+        if internal_dir.exists():
+            return internal_dir
+        return exe_dir
     return Path(__file__).parent
 
 
@@ -58,7 +63,10 @@ def wait_for_server(port, timeout=60):
 def find_venv_python(app_dir):
     """Find Python in bundled venv."""
     if platform.system() == 'Windows':
+        # On Windows, venv is next to the exe (parent of _internal)
         venv_python = app_dir / 'venv' / 'Scripts' / 'python.exe'
+        if not venv_python.exists():
+            venv_python = app_dir.parent / 'venv' / 'Scripts' / 'python.exe'
     else:
         venv_python = app_dir / 'venv' / 'bin' / 'python'
     if venv_python.exists():
