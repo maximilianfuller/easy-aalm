@@ -47,6 +47,65 @@ jobs:
         run: |
           cp -R "bundled_wine/Wine Crossover.app" "dist/Easy AALM.app/Contents/Resources/"
 
+      - name: Import Code Signing Certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          # Decode certificate
+          echo "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+
+          # Create and configure keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate
+          security import certificate.p12 -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # Clean up
+          rm certificate.p12
+
+      - name: Sign and Notarize App
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APP_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cd "dist"
+
+          # Find signing identity
+          SIGNING_IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | sed -n 's/.*"\(.*\)"/\1/p')
+          echo "Using signing identity: $SIGNING_IDENTITY"
+
+          # Remove extended attributes
+          xattr -cr "Easy AALM.app"
+
+          # Sign the app
+          codesign --deep --force --verify --verbose --sign "$SIGNING_IDENTITY" "Easy AALM.app"
+
+          # Create zip for notarization
+          ditto -c -k --keepParent "Easy AALM.app" "Easy-AALM.zip"
+
+          # Submit for notarization
+          xcrun notarytool submit "Easy-AALM.zip" \
+            --apple-id "$APPLE_ID" \
+            --password "$APP_PASSWORD" \
+            --team-id "$TEAM_ID" \
+            --wait
+
+          # Staple the ticket
+          xcrun stapler staple "Easy AALM.app"
+
+          # Clean up zip
+          rm "Easy-AALM.zip"
+
       - name: Create DMG
         run: |
           hdiutil create -volname "Easy AALM" -srcfolder "dist/Easy AALM.app" -ov -format UDZO "Easy-AALM-macOS.dmg"
