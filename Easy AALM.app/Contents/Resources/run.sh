@@ -146,6 +146,20 @@ if [ -f "$APP_RESOURCES/fortran_input_generator.py" ]; then
     cp "$APP_RESOURCES/fortran_input_generator.py" "$USER_DATA_DIR/fortran_input_generator.py" 2>/dev/null || true
 fi
 
+# Always ensure required template files exist (copy missing ones from app bundle)
+if [ -d "$APP_RESOURCES/aalm_original/Examples" ]; then
+    mkdir -p "$USER_DATA_DIR/aalm_original/Examples"
+    # Copy any missing template files
+    for template in "$APP_RESOURCES/aalm_original/Examples"/*.txt; do
+        if [ -f "$template" ]; then
+            template_name=$(basename "$template")
+            if [ ! -f "$USER_DATA_DIR/aalm_original/Examples/$template_name" ]; then
+                cp "$template" "$USER_DATA_DIR/aalm_original/Examples/$template_name" 2>/dev/null || true
+            fi
+        fi
+    done
+fi
+
 echo "Starting Streamlit app..."
 echo ""
 echo "Browser will open at http://localhost:8501"
