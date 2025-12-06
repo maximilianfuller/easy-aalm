@@ -176,9 +176,17 @@ if run_button:
             import os
             user_data_dir = Path.home() / "Library" / "Application Support" / "Easy AALM"
             script_dir = Path(__file__).parent
+
+            # If running from src/ subdirectory, use parent directory
+            if script_dir.name == "src":
+                repo_dir = script_dir.parent
+            else:
+                repo_dir = script_dir
+
             aalm_paths = [
                 user_data_dir / "aalm_original" / "AALM_64.exe",  # User data directory (primary)
-                script_dir / "aalm_original" / "AALM_64.exe",  # Bundled version
+                script_dir / "aalm_original" / "AALM_64.exe",  # Same directory as script
+                repo_dir / "aalm_original" / "AALM_64.exe",  # Repository root
                 Path("aalm_original/AALM_64.exe"),  # Relative path
             ]
 
