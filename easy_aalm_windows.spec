@@ -35,6 +35,8 @@ hiddenimports = [
     'plotly.express',
     'openpyxl',
     'webview',
+    'webview.platforms.cef',
+    'cefpython3',
     'altair',
     'pyarrow',
     'PIL',
