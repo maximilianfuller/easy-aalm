@@ -123,6 +123,7 @@ if [ ! -f "$USER_DATA_DIR/venv/bin/python" ]; then
     cp -r "$APP_RESOURCES/aalm_original" "$USER_DATA_DIR/"
     cp -r "$APP_RESOURCES/.streamlit" "$USER_DATA_DIR/"
     cp "$APP_RESOURCES/app.py" "$USER_DATA_DIR/"
+    cp "$APP_RESOURCES/fortran_input_generator.py" "$USER_DATA_DIR/"
 
     echo ""
     echo "Setup complete! Starting the application..."
@@ -137,9 +138,12 @@ if [ -f "$USER_DATA_DIR/aalm_original/AALM_32.exe" ]; then
     chmod +x "$USER_DATA_DIR/aalm_original/AALM_32.exe" 2>/dev/null || true
 fi
 
-# Always update app.py from app bundle (in case we've updated it)
+# Always update app files from app bundle (in case we've updated them)
 if [ -f "$APP_RESOURCES/app.py" ]; then
     cp "$APP_RESOURCES/app.py" "$USER_DATA_DIR/app.py" 2>/dev/null || true
+fi
+if [ -f "$APP_RESOURCES/fortran_input_generator.py" ]; then
+    cp "$APP_RESOURCES/fortran_input_generator.py" "$USER_DATA_DIR/fortran_input_generator.py" 2>/dev/null || true
 fi
 
 echo "Starting Streamlit app..."
