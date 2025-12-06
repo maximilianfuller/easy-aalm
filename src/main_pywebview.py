@@ -28,9 +28,15 @@ def get_app_dir():
             bundle_dir = Path(sys.executable).parent.parent / 'Resources'
             if bundle_dir.exists():
                 return bundle_dir
-        # On Windows, PyInstaller puts files in _internal subdirectory
+        # On Windows, PyInstaller 6.x puts files in _internal subdirectory
         exe_dir = Path(sys.executable).parent
         internal_dir = exe_dir / '_internal'
+        if internal_dir.exists() and (internal_dir / 'app.py').exists():
+            return internal_dir
+        # Fallback: check if app.py is next to executable
+        if (exe_dir / 'app.py').exists():
+            return exe_dir
+        # Last resort: return _internal if it exists
         if internal_dir.exists():
             return internal_dir
         return exe_dir

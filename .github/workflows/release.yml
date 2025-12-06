@@ -38,65 +38,41 @@ jobs:
         run: |
           pyinstaller easy_aalm.spec --clean --noconfirm
 
+      - name: Download standalone Python
+        run: |
+          # Use python-build-standalone for a truly portable Python
+          curl -L -o python.tar.gz "https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-aarch64-apple-darwin-install_only.tar.gz"
+          tar -xzf python.tar.gz
+          mv python python-standalone
+          rm python.tar.gz
+
+          # Also get x86_64 for Intel Macs
+          curl -L -o python-x86.tar.gz "https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-x86_64-apple-darwin-install_only.tar.gz"
+          mkdir python-x86
+          tar -xzf python-x86.tar.gz -C python-x86 --strip-components=1
+          rm python-x86.tar.gz
+
       - name: Create bundled Python venv
         run: |
           BUNDLE_VENV="dist/Easy AALM.app/Contents/Resources/venv"
 
-          # Get the Python framework path
-          PYTHON_FRAMEWORK=$(python3 -c "import sys, os; print(os.path.dirname(os.path.dirname(os.path.realpath(sys.executable))))")
-          echo "Python framework: $PYTHON_FRAMEWORK"
+          # Copy the standalone Python (use x86_64 for broader compatibility)
+          echo "Copying standalone Python..."
+          cp -R python-x86/* "$BUNDLE_VENV/"
 
-          # Copy the entire Python framework to make it portable
-          echo "Copying Python framework..."
-          mkdir -p "$BUNDLE_VENV"
-
-          # Copy Python binary
-          PYTHON_REAL=$(python3 -c "import sys, os; print(os.path.realpath(sys.executable))")
-          mkdir -p "$BUNDLE_VENV/bin"
-          cp "$PYTHON_REAL" "$BUNDLE_VENV/bin/python3"
-          ln -s python3 "$BUNDLE_VENV/bin/python"
-          ln -s python3 "$BUNDLE_VENV/bin/python3.11"
-
-          # Copy the lib directory (contains the standard library and site-packages location)
-          if [ -d "$PYTHON_FRAMEWORK/lib" ]; then
-              cp -R "$PYTHON_FRAMEWORK/lib" "$BUNDLE_VENV/"
-          fi
-
-          # Check what the binary needs
-          echo "Binary dependencies:"
-          otool -L "$BUNDLE_VENV/bin/python3"
-
-          # Copy the Python library (dylib) - GitHub runner uses Python.framework
-          PYTHON_DYLIB="$PYTHON_FRAMEWORK/Python"
-          if [ -f "$PYTHON_DYLIB" ]; then
-              echo "Copying Python dylib..."
-              # The binary expects @executable_path/../Python or similar
-              cp "$PYTHON_DYLIB" "$BUNDLE_VENV/"
-              # Also copy to where it might look
-              mkdir -p "$BUNDLE_VENV/Frameworks"
-              cp "$PYTHON_DYLIB" "$BUNDLE_VENV/Frameworks/"
-          fi
-
-          # Copy Resources if they exist
-          if [ -d "$PYTHON_FRAMEWORK/Resources" ]; then
-              cp -R "$PYTHON_FRAMEWORK/Resources" "$BUNDLE_VENV/"
-          fi
-
-          # Create pyvenv.cfg
-          echo "home = bin" > "$BUNDLE_VENV/pyvenv.cfg"
-          echo "include-system-site-packages = false" >> "$BUNDLE_VENV/pyvenv.cfg"
-
-          # Install packages using the ORIGINAL Python (not the copied one yet)
+          # Install packages
           echo "Installing packages..."
-          python -m pip install --target="$BUNDLE_VENV/lib/python3.11/site-packages" streamlit pandas plotly openpyxl
+          "$BUNDLE_VENV/bin/python3" -m pip install streamlit pandas plotly openpyxl
 
           # Test the bundled Python
           echo "Testing bundled Python..."
-          "$BUNDLE_VENV/bin/python3" --version || echo "WARNING: Python test failed"
+          "$BUNDLE_VENV/bin/python3" --version
+          "$BUNDLE_VENV/bin/python3" -c "import streamlit; print('Streamlit OK')"
 
           # Show what we have
           echo "Bundle contents:"
           ls -la "$BUNDLE_VENV/"
+          ls -la "$BUNDLE_VENV/bin/"
 
       - name: Bundle Wine
         run: |
