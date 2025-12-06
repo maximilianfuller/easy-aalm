@@ -51,15 +51,27 @@ jobs:
 
           echo "  Python binary: $PYTHON_REAL"
           echo "  Framework: $PYTHON_FRAMEWORK"
+          echo "  Framework contents:"
+          ls -la "$PYTHON_FRAMEWORK/" || true
 
           # Copy the actual Python binary (replacing symlink)
           rm -f "$BUNDLE_VENV/bin/python3"
           cp "$PYTHON_REAL" "$BUNDLE_VENV/bin/python3"
 
-          # Copy the Python3 dylib that the binary needs (expects @executable_path/../Python3)
+          # Check what libraries the binary needs
+          echo "  Binary dependencies:"
+          otool -L "$BUNDLE_VENV/bin/python3" | head -5
+
+          # Copy the Python3 dylib - check multiple possible locations
           if [ -f "$PYTHON_FRAMEWORK/Python3" ]; then
-              echo "  Copying Python3 dylib..."
+              echo "  Copying Python3 dylib from framework..."
               cp "$PYTHON_FRAMEWORK/Python3" "$BUNDLE_VENV/"
+          elif [ -f "$PYTHON_FRAMEWORK/lib/libpython3.11.dylib" ]; then
+              echo "  Copying libpython3.11.dylib..."
+              cp "$PYTHON_FRAMEWORK/lib/libpython3.11.dylib" "$BUNDLE_VENV/Python3"
+          elif [ -f "/usr/local/Frameworks/Python.framework/Versions/3.11/Python" ]; then
+              echo "  Copying from Python.framework..."
+              cp "/usr/local/Frameworks/Python.framework/Versions/3.11/Python" "$BUNDLE_VENV/Python3"
           fi
 
           # Copy the Resources folder (contains Python.app needed by macOS Python)
@@ -77,6 +89,12 @@ jobs:
           rm -f python python3.11 2>/dev/null || true
           ln -s python3 python
           ln -s python3 python3.11
+
+          # Verify the bundled Python works
+          cd -
+          echo "  Testing bundled Python..."
+          "$BUNDLE_VENV/bin/python3" -c "import sys; print('Python OK:', sys.version)" || echo "WARNING: Bundled Python test failed"
+          "$BUNDLE_VENV/bin/python3" -c "import streamlit; print('Streamlit OK')" || echo "WARNING: Streamlit import failed"
 
       - name: Bundle Wine
         run: |
