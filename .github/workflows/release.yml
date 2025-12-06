@@ -41,60 +41,62 @@ jobs:
       - name: Create bundled Python venv
         run: |
           BUNDLE_VENV="dist/Easy AALM.app/Contents/Resources/venv"
-          python -m venv "$BUNDLE_VENV"
-          "$BUNDLE_VENV/bin/pip" install streamlit pandas plotly openpyxl
 
-          # Make Python fully portable by copying the binary and its dependencies
-          echo "Making Python portable..."
+          # Get the Python framework path
+          PYTHON_FRAMEWORK=$(python3 -c "import sys, os; print(os.path.dirname(os.path.dirname(os.path.realpath(sys.executable))))")
+          echo "Python framework: $PYTHON_FRAMEWORK"
+
+          # Copy the entire Python framework to make it portable
+          echo "Copying Python framework..."
+          mkdir -p "$BUNDLE_VENV"
+
+          # Copy Python binary
           PYTHON_REAL=$(python3 -c "import sys, os; print(os.path.realpath(sys.executable))")
-          PYTHON_FRAMEWORK=$(dirname "$(dirname "$PYTHON_REAL")")
-
-          echo "  Python binary: $PYTHON_REAL"
-          echo "  Framework: $PYTHON_FRAMEWORK"
-          echo "  Framework contents:"
-          ls -la "$PYTHON_FRAMEWORK/" || true
-
-          # Copy the actual Python binary (replacing symlink)
-          rm -f "$BUNDLE_VENV/bin/python3"
+          mkdir -p "$BUNDLE_VENV/bin"
           cp "$PYTHON_REAL" "$BUNDLE_VENV/bin/python3"
+          ln -s python3 "$BUNDLE_VENV/bin/python"
+          ln -s python3 "$BUNDLE_VENV/bin/python3.11"
 
-          # Check what libraries the binary needs
-          echo "  Binary dependencies:"
-          otool -L "$BUNDLE_VENV/bin/python3" | head -5
-
-          # Copy the Python3 dylib - check multiple possible locations
-          if [ -f "$PYTHON_FRAMEWORK/Python3" ]; then
-              echo "  Copying Python3 dylib from framework..."
-              cp "$PYTHON_FRAMEWORK/Python3" "$BUNDLE_VENV/"
-          elif [ -f "$PYTHON_FRAMEWORK/lib/libpython3.11.dylib" ]; then
-              echo "  Copying libpython3.11.dylib..."
-              cp "$PYTHON_FRAMEWORK/lib/libpython3.11.dylib" "$BUNDLE_VENV/Python3"
-          elif [ -f "/usr/local/Frameworks/Python.framework/Versions/3.11/Python" ]; then
-              echo "  Copying from Python.framework..."
-              cp "/usr/local/Frameworks/Python.framework/Versions/3.11/Python" "$BUNDLE_VENV/Python3"
+          # Copy the lib directory (contains the standard library and site-packages location)
+          if [ -d "$PYTHON_FRAMEWORK/lib" ]; then
+              cp -R "$PYTHON_FRAMEWORK/lib" "$BUNDLE_VENV/"
           fi
 
-          # Copy the Resources folder (contains Python.app needed by macOS Python)
+          # Check what the binary needs
+          echo "Binary dependencies:"
+          otool -L "$BUNDLE_VENV/bin/python3"
+
+          # Copy the Python library (dylib) - GitHub runner uses Python.framework
+          PYTHON_DYLIB="$PYTHON_FRAMEWORK/Python"
+          if [ -f "$PYTHON_DYLIB" ]; then
+              echo "Copying Python dylib..."
+              # The binary expects @executable_path/../Python or similar
+              cp "$PYTHON_DYLIB" "$BUNDLE_VENV/"
+              # Also copy to where it might look
+              mkdir -p "$BUNDLE_VENV/Frameworks"
+              cp "$PYTHON_DYLIB" "$BUNDLE_VENV/Frameworks/"
+          fi
+
+          # Copy Resources if they exist
           if [ -d "$PYTHON_FRAMEWORK/Resources" ]; then
-              echo "  Copying Resources..."
               cp -R "$PYTHON_FRAMEWORK/Resources" "$BUNDLE_VENV/"
           fi
 
-          # Update pyvenv.cfg to not reference external paths
+          # Create pyvenv.cfg
           echo "home = bin" > "$BUNDLE_VENV/pyvenv.cfg"
           echo "include-system-site-packages = false" >> "$BUNDLE_VENV/pyvenv.cfg"
 
-          # Create relative symlinks
-          cd "$BUNDLE_VENV/bin"
-          rm -f python python3.11 2>/dev/null || true
-          ln -s python3 python
-          ln -s python3 python3.11
+          # Install packages using the ORIGINAL Python (not the copied one yet)
+          echo "Installing packages..."
+          python -m pip install --target="$BUNDLE_VENV/lib/python3.11/site-packages" streamlit pandas plotly openpyxl
 
-          # Verify the bundled Python works
-          cd -
-          echo "  Testing bundled Python..."
-          "$BUNDLE_VENV/bin/python3" -c "import sys; print('Python OK:', sys.version)" || echo "WARNING: Bundled Python test failed"
-          "$BUNDLE_VENV/bin/python3" -c "import streamlit; print('Streamlit OK')" || echo "WARNING: Streamlit import failed"
+          # Test the bundled Python
+          echo "Testing bundled Python..."
+          "$BUNDLE_VENV/bin/python3" --version || echo "WARNING: Python test failed"
+
+          # Show what we have
+          echo "Bundle contents:"
+          ls -la "$BUNDLE_VENV/"
 
       - name: Bundle Wine
         run: |
