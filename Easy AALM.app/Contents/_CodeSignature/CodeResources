@@ -52,10 +52,6 @@
 		<data>
 		IUpqsDWOBedsnI3a8FzQcR3a3/Q=
 		</data>
-		<key>Resources/aalm_original/Examples/LeggettInput_ExcelDefaults.txt</key>
-		<data>
-		k2Sq27ye03MV6noRNT5QaRQO1JM=
-		</data>
 		<key>Resources/aalm_original/LeggettInput.txt</key>
 		<data>
 		IDcAWvM2QX7kAsPn/+UveHXfqFw=
@@ -142,7 +138,7 @@
 		</data>
 		<key>Resources/app.py</key>
 		<data>
-		S4CieP3PLQeAkXONQhXFMmwesu8=
+		tNOixeSnoqLl9rkGB3jgpX7XovU=
 		</data>
 		<key>Resources/fortran_input_generator.py</key>
 		<data>
@@ -159,6 +155,10 @@
 		<key>Resources/setup.sh</key>
 		<data>
 		1jvR3OKfgdAusg1gu4zDQroDs/M=
+		</data>
+		<key>Resources/templates/LeggettInput_ExcelDefaults.txt</key>
+		<data>
+		k2Sq27ye03MV6noRNT5QaRQO1JM=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -293,17 +293,6 @@
 			<key>hash2</key>
 			<data>
 			lvtrwz0na6qOpHS2JwsLCkKXvolrEt3x2nMi+ehMl0o=
-			</data>
-		</dict>
-		<key>Resources/aalm_original/Examples/LeggettInput_ExcelDefaults.txt</key>
-		<dict>
-			<key>hash</key>
-			<data>
-			k2Sq27ye03MV6noRNT5QaRQO1JM=
-			</data>
-			<key>hash2</key>
-			<data>
-			v2yRV0MHeAVAT8tX2o5gWDxgB4UIlx+qCqcr6RhbOG8=
 			</data>
 		</dict>
 		<key>Resources/aalm_original/LeggettInput.txt</key>
@@ -541,11 +530,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			S4CieP3PLQeAkXONQhXFMmwesu8=
+			tNOixeSnoqLl9rkGB3jgpX7XovU=
 			</data>
 			<key>hash2</key>
 			<data>
-			OY59idUMCvMFARJEd47o9XzaXcEvaZUCdmwmiE19D1k=
+			cNuFdMGIAL01LNooUoJj224eBlbmWEynZzXZie3FLgk=
 			</data>
 		</dict>
 		<key>Resources/fortran_input_generator.py</key>
@@ -590,6 +579,17 @@
 			<key>hash2</key>
 			<data>
 			xtvUha0clOjZCbrPMudX6ApLmdOuo3599GGY3SkdIjw=
+			</data>
+		</dict>
+		<key>Resources/templates/LeggettInput_ExcelDefaults.txt</key>
+		<dict>
+			<key>hash</key>
+			<data>
+			k2Sq27ye03MV6noRNT5QaRQO1JM=
+			</data>
+			<key>hash2</key>
+			<data>
+			v2yRV0MHeAVAT8tX2o5gWDxgB4UIlx+qCqcr6RhbOG8=
 			</data>
 		</dict>
 	</dict>

@@ -118,6 +118,7 @@ if [ ! -f "$USER_DATA_DIR/venv/bin/python" ]; then
     echo "Copying app files to user directory..."
     cp -r "$APP_RESOURCES/aalm_original" "$USER_DATA_DIR/"
     cp -r "$APP_RESOURCES/.streamlit" "$USER_DATA_DIR/"
+    cp -r "$APP_RESOURCES/templates" "$USER_DATA_DIR/"
     cp "$APP_RESOURCES/app.py" "$USER_DATA_DIR/"
     cp "$APP_RESOURCES/fortran_input_generator.py" "$USER_DATA_DIR/"
 
