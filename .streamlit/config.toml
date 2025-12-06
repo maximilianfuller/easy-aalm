@@ -3,3 +3,11 @@ gatherUsageStats = false
 
 [server]
 headless = true
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = false
+
+[ui]
+hideTopBar = false
+hideSidebarNav = false

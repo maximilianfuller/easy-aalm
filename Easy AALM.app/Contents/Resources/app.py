@@ -18,8 +18,9 @@ st.set_page_config(
     layout="wide"
 )
 
+
 st.title("Easy AALM - Lead Exposure Calculator")
-st.markdown("Simple tool to estimate Blood Lead Levels from environmental measurements")
+st.markdown("Simple tool to estimate Blood Lead Levels from environmental measurements | Uses code from the [EPA AALM Model](https://www.epa.gov/superfund/lead-all-ages-lead-model-aalm)")
 
 st.markdown("---")
 
