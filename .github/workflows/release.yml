@@ -87,21 +87,18 @@ jobs:
           # Remove extended attributes
           xattr -cr "Easy AALM.app"
 
-          # Sign all Wine binaries first (they need individual signing with timestamp)
-          echo "Signing Wine binaries..."
-
-          # Find all executable binaries and libraries
-          find "Easy AALM.app/Contents/Resources/Wine Crossover.app" -type f | while read file; do
-            # Check if it's a Mach-O binary
+          # Sign ALL Mach-O binaries in the entire app bundle (Wine, venv, frameworks, etc.)
+          echo "Signing all Mach-O binaries..."
+          find "Easy AALM.app" -type f | while read file; do
             if file "$file" | grep -q "Mach-O"; then
               echo "Signing: $file"
               codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$file" 2>/dev/null || true
             fi
           done
 
-          # Sign Wine Crossover.app bundle
+          # Sign nested bundles
           echo "Signing Wine Crossover.app..."
-          codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" "Easy AALM.app/Contents/Resources/Wine Crossover.app"
+          codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" "Easy AALM.app/Contents/Resources/Wine Crossover.app" || true
 
           # Sign the main app with hardened runtime and timestamp
           echo "Signing Easy AALM.app..."
