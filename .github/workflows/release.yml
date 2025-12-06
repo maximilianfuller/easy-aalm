@@ -13,7 +13,7 @@ on:
 
 jobs:
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-13  # Use Intel runner for x86_64 Python compatibility
     steps:
       - uses: actions/checkout@v4
 
@@ -40,39 +40,59 @@ jobs:
 
       - name: Download standalone Python
         run: |
-          # Use python-build-standalone for a truly portable Python
-          curl -L -o python.tar.gz "https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-aarch64-apple-darwin-install_only.tar.gz"
-          tar -xzf python.tar.gz
-          mv python python-standalone
-          rm python.tar.gz
+          echo "Runner architecture: $(uname -m)"
 
-          # Also get x86_64 for Intel Macs
+          # Download x86_64 Python for Intel Macs (also works on M1/M2 via Rosetta)
+          echo "Downloading x86_64 Python..."
           curl -L -o python-x86.tar.gz "https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-x86_64-apple-darwin-install_only.tar.gz"
           mkdir python-x86
           tar -xzf python-x86.tar.gz -C python-x86 --strip-components=1
           rm python-x86.tar.gz
 
+          # Verify Python works
+          echo "Testing x86_64 Python..."
+          python-x86/bin/python3 --version
+          python-x86/bin/python3 -c "import sys; print(f'Platform: {sys.platform}')"
+
       - name: Create bundled Python venv
         run: |
           BUNDLE_VENV="dist/Easy AALM.app/Contents/Resources/venv"
+
+          # Create the venv directory structure
+          echo "Creating venv directory..."
+          mkdir -p "$BUNDLE_VENV"
+
+          # Check what we have from standalone Python
+          echo "Standalone Python contents:"
+          ls -la python-x86/
 
           # Copy the standalone Python (use x86_64 for broader compatibility)
           echo "Copying standalone Python..."
           cp -R python-x86/* "$BUNDLE_VENV/"
 
-          # Install packages
-          echo "Installing packages..."
-          "$BUNDLE_VENV/bin/python3" -m pip install streamlit pandas plotly openpyxl
+          # Create symlink from python to python3 if needed
+          if [ ! -f "$BUNDLE_VENV/bin/python" ] && [ -f "$BUNDLE_VENV/bin/python3" ]; then
+            ln -sf python3 "$BUNDLE_VENV/bin/python"
+          fi
 
-          # Test the bundled Python
+          # Show what we have after copy
+          echo "Bundle venv contents:"
+          ls -la "$BUNDLE_VENV/"
+          echo "Bundle venv/bin contents:"
+          ls -la "$BUNDLE_VENV/bin/"
+
+          # Test the bundled Python before installing packages
           echo "Testing bundled Python..."
           "$BUNDLE_VENV/bin/python3" --version
-          "$BUNDLE_VENV/bin/python3" -c "import streamlit; print('Streamlit OK')"
 
-          # Show what we have
-          echo "Bundle contents:"
-          ls -la "$BUNDLE_VENV/"
-          ls -la "$BUNDLE_VENV/bin/"
+          # Install packages
+          echo "Installing packages..."
+          "$BUNDLE_VENV/bin/python3" -m pip install --upgrade pip
+          "$BUNDLE_VENV/bin/python3" -m pip install streamlit pandas plotly openpyxl
+
+          # Test that streamlit imports
+          echo "Verifying streamlit..."
+          "$BUNDLE_VENV/bin/python3" -c "import streamlit; print('Streamlit OK')"
 
       - name: Bundle Wine
         run: |
