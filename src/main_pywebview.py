@@ -144,6 +144,13 @@ def main():
 
     win = webview.create_window('Easy AALM', html=LOADING_HTML, width=1400, height=900, min_size=(1000, 700))
 
+    def enable_text_selection():
+        """Enable text selection in the webview."""
+        css = """
+        * { -webkit-user-select: text !important; user-select: text !important; }
+        """
+        win.evaluate_js(f"var style = document.createElement('style'); style.textContent = `{css}`; document.head.appendChild(style);")
+
     def start_backend():
         err = start_streamlit(port, app_dir)
         if err:
@@ -152,6 +159,8 @@ def main():
         if wait_for_server(port):
             time.sleep(0.5)
             win.load_url(f'http://127.0.0.1:{port}')
+            time.sleep(1)
+            enable_text_selection()
         else:
             win.load_html("<html><body style='padding:40px;font-family:sans-serif;'><h1>Timeout</h1><p>Could not start.</p></body></html>")
 
