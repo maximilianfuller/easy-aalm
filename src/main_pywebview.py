@@ -177,9 +177,29 @@ def main():
     def start_backend():
         time.sleep(0.5)  # Wait for window to be ready
 
+        log(f"App directory: {app_dir}")
+
+        # Check if app.py exists
+        app_py = app_dir / 'app.py'
+        log(f"app.py exists: {app_py.exists()}")
+
         status("Finding Python environment...")
         python_exe = find_venv_python(app_dir)
         log(f"Python: {python_exe}")
+        log(f"Python exists: {Path(python_exe).exists()}")
+
+        # Test if Python can run
+        try:
+            test_result = subprocess.run(
+                [python_exe, '-c', 'import sys; print(sys.version)'],
+                capture_output=True, text=True, timeout=10
+            )
+            if test_result.returncode == 0:
+                log(f"Python version: {test_result.stdout.strip()[:50]}")
+            else:
+                log(f"Python error: {test_result.stderr[:100]}")
+        except Exception as e:
+            log(f"Python test failed: {str(e)[:50]}")
 
         status("Starting Streamlit server...")
         err = start_streamlit(port, app_dir)
@@ -192,6 +212,7 @@ def main():
         status("Waiting for server to be ready...")
 
         start_time = time.time()
+        last_check = 0
         while time.time() - start_time < 60:
             try:
                 with socket.socket() as s:
@@ -204,8 +225,26 @@ def main():
                         return
             except:
                 pass
+
             elapsed = int(time.time() - start_time)
             status(f"Waiting for server... ({elapsed}s)")
+
+            # Check process status every 5 seconds
+            if elapsed - last_check >= 5:
+                last_check = elapsed
+                if _streamlit_process:
+                    poll = _streamlit_process.poll()
+                    if poll is not None:
+                        log(f"Process exited with code {poll}")
+                        # Try to get error output
+                        try:
+                            stderr = _streamlit_process.stderr.read()
+                            if stderr:
+                                log(f"Error: {stderr[:200]}")
+                        except:
+                            pass
+                        return
+
             time.sleep(0.5)
 
         status("Timeout waiting for server")
