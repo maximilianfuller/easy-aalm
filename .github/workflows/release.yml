@@ -13,7 +13,7 @@ on:
 
 jobs:
   build-macos:
-    runs-on: macos-13  # Use Intel runner for x86_64 Python compatibility
+    runs-on: macos-14  # Use ARM64 (M1) runner for native Apple Silicon build
     steps:
       - uses: actions/checkout@v4
 
@@ -42,17 +42,17 @@ jobs:
         run: |
           echo "Runner architecture: $(uname -m)"
 
-          # Download x86_64 Python for Intel Macs (also works on M1/M2 via Rosetta)
-          echo "Downloading x86_64 Python..."
-          curl -L -o python-x86.tar.gz "https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-x86_64-apple-darwin-install_only.tar.gz"
-          mkdir python-x86
-          tar -xzf python-x86.tar.gz -C python-x86 --strip-components=1
-          rm python-x86.tar.gz
+          # Download ARM64 Python for Apple Silicon (native on M1/M2, runner is ARM64)
+          echo "Downloading ARM64 Python..."
+          curl -L -o python-arm64.tar.gz "https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-aarch64-apple-darwin-install_only.tar.gz"
+          mkdir python-arm64
+          tar -xzf python-arm64.tar.gz -C python-arm64 --strip-components=1
+          rm python-arm64.tar.gz
 
           # Verify Python works
-          echo "Testing x86_64 Python..."
-          python-x86/bin/python3 --version
-          python-x86/bin/python3 -c "import sys; print(f'Platform: {sys.platform}')"
+          echo "Testing ARM64 Python..."
+          python-arm64/bin/python3 --version
+          python-arm64/bin/python3 -c "import sys; print(f'Platform: {sys.platform}')"
 
       - name: Create bundled Python venv
         run: |
@@ -64,11 +64,11 @@ jobs:
 
           # Check what we have from standalone Python
           echo "Standalone Python contents:"
-          ls -la python-x86/
+          ls -la python-arm64/
 
-          # Copy the standalone Python (use x86_64 for broader compatibility)
+          # Copy the standalone Python (ARM64 for native Apple Silicon performance)
           echo "Copying standalone Python..."
-          cp -R python-x86/* "$BUNDLE_VENV/"
+          cp -R python-arm64/* "$BUNDLE_VENV/"
 
           # Create symlink from python to python3 if needed
           if [ ! -f "$BUNDLE_VENV/bin/python" ] && [ -f "$BUNDLE_VENV/bin/python3" ]; then
