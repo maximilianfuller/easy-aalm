@@ -87,8 +87,20 @@ jobs:
           # Remove extended attributes
           xattr -cr "Easy AALM.app"
 
-          # Sign the app
-          codesign --deep --force --verify --verbose --sign "$SIGNING_IDENTITY" "Easy AALM.app"
+          # Sign all Wine binaries first (they need individual signing with timestamp)
+          echo "Signing Wine binaries..."
+          find "Easy AALM.app/Contents/Resources/Wine Crossover.app" -type f \( -perm +111 -o -name "*.dylib" -o -name "*.so" \) | while read binary; do
+            echo "Signing: $binary"
+            codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$binary" 2>/dev/null || true
+          done
+
+          # Sign Wine Crossover.app bundle
+          echo "Signing Wine Crossover.app..."
+          codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" "Easy AALM.app/Contents/Resources/Wine Crossover.app"
+
+          # Sign the main app with hardened runtime and timestamp
+          echo "Signing Easy AALM.app..."
+          codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" "Easy AALM.app"
 
           # Create zip for notarization
           ditto -c -k --keepParent "Easy AALM.app" "Easy-AALM.zip"
