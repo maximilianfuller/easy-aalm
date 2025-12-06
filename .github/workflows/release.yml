@@ -189,15 +189,16 @@ jobs:
           python -m venv "dist\EasyAALM\venv"
           dist\EasyAALM\venv\Scripts\pip install streamlit pandas plotly openpyxl
 
-      - name: Create ZIP
+      - name: Create Installer with Inno Setup
         run: |
-          Compress-Archive -Path "dist\EasyAALM" -DestinationPath "Easy-AALM-Windows.zip"
+          choco install innosetup -y
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: Easy-AALM-Windows
-          path: Easy-AALM-Windows.zip
+          path: Easy-AALM-Windows-Setup.exe
 
   release:
     needs: [build-macos, build-windows]
@@ -236,7 +237,7 @@ jobs:
 
             ### Downloads
             - **macOS**: `Easy-AALM-macOS.dmg` - Double-click to open, drag to Applications
-            - **Windows**: `Easy-AALM-Windows.zip` - Extract and run `Easy AALM.exe`
+            - **Windows**: `Easy-AALM-Windows-Setup.exe` - Run installer, then launch from Start Menu or Desktop
 
             ### What's Included
             - Bundled Python environment with Streamlit
@@ -244,6 +245,6 @@ jobs:
             - Wine (macOS only, for running Windows AALM executable)
           files: |
             Easy-AALM-macOS.dmg
-            Easy-AALM-Windows.zip
+            Easy-AALM-Windows-Setup.exe
           draft: false
           prerelease: false
