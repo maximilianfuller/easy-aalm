@@ -61,3 +61,16 @@ Thumbs.db
 # Logs
 *.log
 Easy-AALM.zip
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec.bak
+.build-venv/
+
+# Bundled Wine (downloaded during build)
+bundled_wine/
+wine-crossover.tar.xz
+
+# DMG and release files
+*.dmg

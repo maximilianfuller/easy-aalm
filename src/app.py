@@ -173,9 +173,7 @@ st.markdown("---")
 if run_button:
     with st.spinner("Running AALM simulation..."):
         try:
-            # Find AALM executable in user data directory
-            import os
-            user_data_dir = Path.home() / "Library" / "Application Support" / "Easy AALM"
+            # Find AALM executable - check bundled locations only
             script_dir = Path(__file__).parent
 
             # If running from src/ subdirectory, use parent directory
@@ -185,9 +183,8 @@ if run_button:
                 repo_dir = script_dir
 
             aalm_paths = [
-                user_data_dir / "aalm_original" / "AALM_64.exe",  # User data directory (primary)
-                script_dir / "aalm_original" / "AALM_64.exe",  # Same directory as script
-                repo_dir / "aalm_original" / "AALM_64.exe",  # Repository root
+                script_dir / "aalm_original" / "AALM_64.exe",  # Same directory as script (bundled app)
+                repo_dir / "aalm_original" / "AALM_64.exe",  # Repository root (development)
                 Path("aalm_original/AALM_64.exe"),  # Relative path
             ]
 
@@ -244,7 +241,13 @@ if run_button:
                 # On macOS, use Wine to run the Windows executable
                 import platform
                 if platform.system() == "Darwin":
-                    cmd = ["wine", str(aalm_exe), str(input_file.name)]
+                    # Find Wine - check bundled location first
+                    wine_path = "wine"
+                    script_dir = Path(__file__).parent
+                    bundled_wine = script_dir / "Wine Crossover.app" / "Contents" / "Resources" / "wine" / "bin" / "wine"
+                    if bundled_wine.exists():
+                        wine_path = str(bundled_wine)
+                    cmd = [wine_path, str(aalm_exe), str(input_file.name)]
                 else:
                     cmd = [str(aalm_exe), str(input_file.name)]
 
