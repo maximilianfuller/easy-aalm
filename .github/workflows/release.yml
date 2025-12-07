@@ -247,13 +247,30 @@ jobs:
           # Download standalone Python (same approach as macOS)
           Invoke-WebRequest -Uri "https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-x86_64-pc-windows-msvc-install_only.tar.gz" -OutFile "python-standalone.tar.gz"
           mkdir python-standalone
-          tar -xzf python-standalone.tar.gz -C python-standalone --strip-components=1
+          tar -xzf python-standalone.tar.gz -C python-standalone
           Remove-Item python-standalone.tar.gz
+
+          # Debug: show directory structure
+          Write-Host "Standalone Python contents:"
+          Get-ChildItem -Path python-standalone -Recurse -Depth 2 | Select-Object FullName
 
       - name: Create bundled Python venv
         run: |
-          # Copy standalone Python to venv directory
-          Copy-Item -Path "python-standalone\*" -Destination "dist\EasyAALM\venv" -Recurse -Force
+          # The archive extracts to python-standalone/python/ on Windows
+          $pythonSrc = "python-standalone\python"
+          if (-not (Test-Path $pythonSrc)) {
+            # Fallback: check if it's directly in python-standalone
+            $pythonSrc = "python-standalone"
+          }
+          Write-Host "Using Python from: $pythonSrc"
+
+          # Create venv directory and copy standalone Python
+          New-Item -ItemType Directory -Force -Path "dist\EasyAALM\venv"
+          Copy-Item -Path "$pythonSrc\*" -Destination "dist\EasyAALM\venv" -Recurse -Force
+
+          # Debug: show what we copied
+          Write-Host "Venv contents:"
+          Get-ChildItem -Path "dist\EasyAALM\venv" -Depth 1
 
           # Install packages using the standalone Python
           dist\EasyAALM\venv\python.exe -m pip install --upgrade pip
