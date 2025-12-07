@@ -264,11 +264,26 @@ if run_button:
                 else:
                     cmd = [str(work_aalm_exe), str(input_file.name)]
 
-                # Set up environment to prevent Wine from accessing user folders
+                # Set up environment to prevent Wine from accessing user folders and showing GUI
                 wine_env = os.environ.copy()
-                wine_env['WINEPREFIX'] = str(tmpdir / '.wine')
-                wine_env['WINEDLLOVERRIDES'] = 'winemenubuilder.exe=d'
+                wine_prefix = tmpdir / '.wine'
+                wine_env['WINEPREFIX'] = str(wine_prefix)
+                wine_env['WINEDLLOVERRIDES'] = 'winemenubuilder.exe=d;mscoree=d;mshtml=d'
                 wine_env['WINEDEBUG'] = '-all'  # Suppress Wine debug output
+                wine_env['DISPLAY'] = ''  # Disable X11 to prevent GUI dialogs
+
+                # Pre-initialize Wine prefix silently (avoids "Wine configuration" popup)
+                if platform.system() == "Darwin" and not wine_prefix.exists():
+                    wineboot_path = Path(wine_path).parent / 'wineboot' if wine_path != "wine" else "wineboot"
+                    try:
+                        subprocess.run(
+                            [str(wineboot_path), '--init'],
+                            env=wine_env,
+                            capture_output=True,
+                            timeout=60
+                        )
+                    except Exception:
+                        pass  # Continue even if wineboot fails
 
                 result = subprocess.run(
                     cmd,

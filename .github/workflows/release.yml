@@ -192,9 +192,20 @@ jobs:
           # Clean up zip
           rm "Easy-AALM.zip"
 
-      - name: Create DMG
+      - name: Create DMG with Applications shortcut
         run: |
-          hdiutil create -volname "Easy AALM" -srcfolder "dist/Easy AALM.app" -ov -format UDZO "Easy-AALM-macOS.dmg"
+          # Create a temporary folder for DMG contents
+          mkdir -p dmg_contents
+          cp -R "dist/Easy AALM.app" dmg_contents/
+
+          # Create symlink to Applications folder
+          ln -s /Applications dmg_contents/Applications
+
+          # Create DMG with the app and Applications symlink
+          hdiutil create -volname "Easy AALM" -srcfolder dmg_contents -ov -format UDZO "Easy-AALM-macOS.dmg"
+
+          # Clean up
+          rm -rf dmg_contents
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
