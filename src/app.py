@@ -337,16 +337,14 @@ if run_button:
 
                 st.markdown("### Summary")
 
-                col1, col2, col3 = st.columns(3)
+                col1, col2 = st.columns(2)
                 with col1:
                     if avg_bll is not None:
-                        st.metric("Average Blood Lead Level", f"{avg_bll:.2f} μg/dL")
+                        # Convert from µg/dL to µg/L (multiply by 10)
+                        avg_bll_per_L = avg_bll * 10
+                        st.metric("Average Blood Lead Level", f"{avg_bll_per_L:.1f} μg/L")
                 with col2:
                     st.metric("Age Range", f"{age_range[0]}-{age_range[1]} years")
-                with col3:
-                    threshold = 3.5  # CDC reference level
-                    status = "Above" if avg_bll and avg_bll > threshold else "Below"
-                    st.metric(f"CDC Threshold ({threshold} μg/dL)", status)
 
                 # Try to parse and plot CSV if available
                 if output_csv and output_csv.exists():
@@ -361,25 +359,18 @@ if run_button:
                         # Create plot - use 'Days' and 'Cblood' columns from Out_*.csv
                         fig = go.Figure()
                         if 'Days' in df.columns and 'Cblood' in df.columns:
+                            # Convert Cblood from µg/dL to µg/L (multiply by 10)
                             fig.add_trace(go.Scatter(
                                 x=df['Days'] / 365,  # Convert to years
-                                y=df['Cblood'],
+                                y=df['Cblood'] * 10,  # Convert to µg/L
                                 mode='lines',
                                 name='Blood Lead Level',
                                 line=dict(color='#D32F2F', width=2)
                             ))
 
-                            fig.add_hline(
-                                y=3.5,
-                                line_dash="dash",
-                                line_color="#FF9800",
-                                annotation_text="CDC Reference (3.5 μg/dL)",
-                                annotation_position="right"
-                            )
-
                             fig.update_layout(
                                 xaxis_title="Age (years)",
-                                yaxis_title="Blood Lead Level (μg/dL)",
+                                yaxis_title="Blood Lead Level (μg/L)",
                                 template="plotly_white",
                                 height=400
                             )
