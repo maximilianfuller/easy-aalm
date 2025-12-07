@@ -92,6 +92,25 @@ def find_venv_python(app_dir):
     return 'python3'
 
 
+def get_venv_dir(app_dir):
+    """Get the venv directory path."""
+    if platform.system() == 'Windows':
+        # Check for standalone Python layout (python.exe in root)
+        venv_dir = app_dir / 'venv'
+        if (venv_dir / 'python.exe').exists():
+            return venv_dir
+        venv_dir = app_dir.parent / 'venv'
+        if (venv_dir / 'python.exe').exists():
+            return venv_dir
+        # Fallback to traditional venv
+        venv_dir = app_dir / 'venv'
+        if venv_dir.exists():
+            return venv_dir
+        return app_dir.parent / 'venv'
+    else:
+        return app_dir / 'venv'
+
+
 def start_streamlit(port, app_dir):
     global _streamlit_process
 
@@ -100,11 +119,20 @@ def start_streamlit(port, app_dir):
         return f"app.py not found"
 
     python_exe = find_venv_python(app_dir)
+    venv_dir = get_venv_dir(app_dir)
 
     env = os.environ.copy()
     env['STREAMLIT_SERVER_PORT'] = str(port)
     env['STREAMLIT_SERVER_HEADLESS'] = 'true'
     env['STREAMLIT_BROWSER_GATHER_USAGE_STATS'] = 'false'
+
+    # For Windows standalone Python, set PYTHONHOME so it finds its libraries
+    if platform.system() == 'Windows' and venv_dir.exists():
+        env['PYTHONHOME'] = str(venv_dir)
+        # Also ensure site-packages is in PYTHONPATH
+        site_packages = venv_dir / 'Lib' / 'site-packages'
+        if site_packages.exists():
+            env['PYTHONPATH'] = str(site_packages)
 
     # Use a temp directory for Wine prefix (app bundle is read-only on macOS)
     import tempfile
@@ -199,8 +227,15 @@ def main():
 
         status("Finding Python environment...")
         python_exe = find_venv_python(app_dir)
+        venv_dir = get_venv_dir(app_dir)
         log(f"Python: {python_exe}")
         log(f"Python exists: {Path(python_exe).exists()}")
+        log(f"Venv dir: {venv_dir}")
+
+        # On Windows, check for site-packages
+        if platform.system() == 'Windows':
+            site_packages = venv_dir / 'Lib' / 'site-packages'
+            log(f"Site-packages exists: {site_packages.exists()}")
 
         # Test if Python can run
         try:
