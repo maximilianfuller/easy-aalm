@@ -1,6 +1,8 @@
 # Easy AALM
 
-A simple, user-friendly web interface for the EPA All-Ages Lead Model (AALM).
+A simple, user-friendly desktop application for the EPA All-Ages Lead Model (AALM).
+
+**[Download Latest Release](https://github.com/maximilianfuller/easy-aalm/releases/latest)**
 
 ## Overview
 
@@ -9,35 +11,31 @@ Easy AALM makes the EPA's lead exposure model accessible to field workers and re
 ### Features
 
 - **Simple inputs** - Age, sex, food/water lead levels (constant exposure)
-- **Cross-platform** - Runs on Mac (with Wine) and Windows
+- **Cross-platform** - Runs on Mac and Windows
 - **Visual output** - Interactive BLL graphs over time
 - **CSV export** - Download daily or weekly data
 - **Field-ready** - Designed for quick XRF-to-BLL calculations
 
 ## Quick Start
 
-### Windows
+### Download
 
-1. **Download** this repository (click green "Code" button → Download ZIP)
-2. **Extract** the ZIP file
-3. **Double-click** `run.bat`
+Get the latest release from the [Releases page](https://github.com/maximilianfuller/easy-aalm/releases/latest):
 
-That's it! Setup runs automatically on first launch, then the app opens in your browser.
+- **macOS**: Download `Easy-AALM-macOS.dmg`, open it, drag to Applications
+- **Windows**: Download `Easy-AALM-Windows-Setup.exe`, run the installer
 
-### Mac
+The apps are fully self-contained with bundled Python and dependencies.
 
-1. **Download** this repository (click green "Code" button → Download ZIP)
-2. **Extract** the ZIP file
-3. **Double-click** `Easy AALM.app`
+### Local Development
 
-The app is **fully signed and notarized** by Apple - no security warnings!
+To run from source:
 
-On first run, the app will automatically:
-- Install Python dependencies (Streamlit, Pandas, Plotly)
-- Install Wine (required to run the AALM Windows executable on Mac)
-- Install Homebrew if needed
+```bash
+./dev.sh
+```
 
-A Terminal window will open showing setup progress (first time only). The app will automatically open in your browser at `http://localhost:8501`.
+This creates a Python virtual environment, installs dependencies, and runs Streamlit at `http://localhost:8501`.
 
 ---
 

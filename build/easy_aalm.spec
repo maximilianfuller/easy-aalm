@@ -10,8 +10,8 @@ from pathlib import Path
 
 block_cipher = None
 
-# Project root directory
-PROJECT_ROOT = Path(SPECPATH)
+# Project root directory (SPECPATH is build/, so go up one level)
+PROJECT_ROOT = Path(SPECPATH).parent
 SRC_DIR = PROJECT_ROOT / 'src'
 AALM_DIR = PROJECT_ROOT / 'aalm_original'
 
@@ -124,7 +124,7 @@ if sys.platform == 'darwin':
     app = BUNDLE(
         coll,
         name='Easy AALM.app',
-        icon='assets/icon.icns',
+        icon=str(PROJECT_ROOT / 'assets' / 'icon.icns'),
         bundle_identifier='com.easyaalm.app',
         info_plist={
             'CFBundleName': 'Easy AALM',

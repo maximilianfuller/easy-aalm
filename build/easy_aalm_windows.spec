@@ -9,7 +9,8 @@ from pathlib import Path
 
 block_cipher = None
 
-PROJECT_ROOT = Path(SPECPATH)
+# Project root directory (SPECPATH is build/, so go up one level)
+PROJECT_ROOT = Path(SPECPATH).parent
 SRC_DIR = PROJECT_ROOT / 'src'
 AALM_DIR = PROJECT_ROOT / 'aalm_original'
 

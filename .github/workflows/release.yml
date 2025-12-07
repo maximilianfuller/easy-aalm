@@ -36,7 +36,7 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller easy_aalm.spec --clean --noconfirm
+          pyinstaller build/easy_aalm.spec --clean --noconfirm
 
       - name: Download standalone Python
         run: |
@@ -142,13 +142,13 @@ jobs:
           echo "Signing Wine binaries with entitlements..."
           find "Easy AALM.app/Contents/Resources/Wine Crossover.app" -type f | while read file; do
             if file "$file" | grep -q "Mach-O"; then
-              codesign --force --options runtime --timestamp --entitlements ../wine-entitlements.plist --sign "$SIGNING_IDENTITY" "$file" 2>/dev/null || true
+              codesign --force --options runtime --timestamp --entitlements ../build/wine-entitlements.plist --sign "$SIGNING_IDENTITY" "$file" 2>/dev/null || true
             fi
           done
 
           # Sign Wine bundle with entitlements
           echo "Signing Wine Crossover.app..."
-          codesign --force --deep --options runtime --timestamp --entitlements ../wine-entitlements.plist --sign "$SIGNING_IDENTITY" "Easy AALM.app/Contents/Resources/Wine Crossover.app" || true
+          codesign --force --deep --options runtime --timestamp --entitlements ../build/wine-entitlements.plist --sign "$SIGNING_IDENTITY" "Easy AALM.app/Contents/Resources/Wine Crossover.app" || true
 
           # Sign other Mach-O binaries (venv, frameworks) without Wine entitlements
           echo "Signing other binaries..."
@@ -230,7 +230,7 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller easy_aalm_windows.spec --clean --noconfirm
+          pyinstaller build/easy_aalm_windows.spec --clean --noconfirm
 
       - name: Bundle pythonnet runtime
         run: |
@@ -282,7 +282,7 @@ jobs:
       - name: Create Installer with Inno Setup
         run: |
           choco install innosetup -y
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" build/installer.iss
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
