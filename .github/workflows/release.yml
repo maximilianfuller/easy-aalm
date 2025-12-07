@@ -242,10 +242,25 @@ jobs:
           $pynetPath = python -c "import pythonnet; import os; print(os.path.dirname(pythonnet.__file__))"
           Copy-Item -Path "$pynetPath" -Destination "dist\EasyAALM\pythonnet" -Recurse -Force
 
+      - name: Download standalone Python for Windows
+        run: |
+          # Download standalone Python (same approach as macOS)
+          Invoke-WebRequest -Uri "https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.11.10+20241016-x86_64-pc-windows-msvc-install_only.tar.gz" -OutFile "python-standalone.tar.gz"
+          mkdir python-standalone
+          tar -xzf python-standalone.tar.gz -C python-standalone --strip-components=1
+          Remove-Item python-standalone.tar.gz
+
       - name: Create bundled Python venv
         run: |
-          python -m venv "dist\EasyAALM\venv"
-          dist\EasyAALM\venv\Scripts\pip install streamlit pandas plotly openpyxl
+          # Copy standalone Python to venv directory
+          Copy-Item -Path "python-standalone\*" -Destination "dist\EasyAALM\venv" -Recurse -Force
+
+          # Install packages using the standalone Python
+          dist\EasyAALM\venv\python.exe -m pip install --upgrade pip
+          dist\EasyAALM\venv\python.exe -m pip install streamlit pandas plotly openpyxl
+
+          # Verify it works
+          dist\EasyAALM\venv\python.exe -c "import streamlit; print('Streamlit OK')"
 
       - name: Create Installer with Inno Setup
         run: |

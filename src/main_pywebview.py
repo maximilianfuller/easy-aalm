@@ -69,8 +69,14 @@ def wait_for_server(port, timeout=60):
 def find_venv_python(app_dir):
     """Find Python in bundled venv."""
     if platform.system() == 'Windows':
-        # On Windows, venv is next to the exe (parent of _internal)
-        venv_python = app_dir / 'venv' / 'Scripts' / 'python.exe'
+        # On Windows with standalone Python, python.exe is directly in venv/
+        # Try standalone Python first (python.exe in root)
+        venv_python = app_dir / 'venv' / 'python.exe'
+        if not venv_python.exists():
+            venv_python = app_dir.parent / 'venv' / 'python.exe'
+        # Fallback to traditional venv layout (Scripts/python.exe)
+        if not venv_python.exists():
+            venv_python = app_dir / 'venv' / 'Scripts' / 'python.exe'
         if not venv_python.exists():
             venv_python = app_dir.parent / 'venv' / 'Scripts' / 'python.exe'
     else:
