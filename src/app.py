@@ -227,39 +227,52 @@ if run_button:
                     sim_name='WebSim'
                 )
 
-                # Write input file in AALM's directory (it needs to run from there)
-                aalm_dir = aalm_exe.parent
-                input_file = aalm_dir / "LeggettInput_web.txt"
+                # Copy AALM and required files to temp directory (app bundle is read-only on macOS)
+                import shutil
+                work_dir = tmpdir / "aalm_work"
+                work_dir.mkdir(exist_ok=True)
+
+                # Copy AALM executable
+                shutil.copy(aalm_exe, work_dir)
+                work_aalm_exe = work_dir / aalm_exe.name
+
+                # Copy RespMod directory (required by AALM)
+                respmod_src = aalm_exe.parent / "RespMod"
+                if respmod_src.exists():
+                    shutil.copytree(respmod_src, work_dir / "RespMod")
+
+                # Write input file in working directory
+                input_file = work_dir / "LeggettInput_web.txt"
                 with open(input_file, 'w') as f:
                     f.writelines(modified_lines)
 
                 # Create output directory for WebSim (Fortran doesn't create it!)
-                output_dir = aalm_dir / "WebSim"
+                output_dir = work_dir / "WebSim"
                 output_dir.mkdir(exist_ok=True)
 
-                # Run AALM from its own directory (important!)
+                # Run AALM from working directory
                 # On macOS, use Wine to run the Windows executable
                 import platform
+                script_dir = Path(__file__).parent
                 if platform.system() == "Darwin":
                     # Find Wine - check bundled location first
                     wine_path = "wine"
-                    script_dir = Path(__file__).parent
                     bundled_wine = script_dir / "Wine Crossover.app" / "Contents" / "Resources" / "wine" / "bin" / "wine"
                     if bundled_wine.exists():
                         wine_path = str(bundled_wine)
-                    cmd = [wine_path, str(aalm_exe), str(input_file.name)]
+                    cmd = [wine_path, str(work_aalm_exe), str(input_file.name)]
                 else:
-                    cmd = [str(aalm_exe), str(input_file.name)]
+                    cmd = [str(work_aalm_exe), str(input_file.name)]
 
                 # Set up environment to prevent Wine from accessing user folders
                 wine_env = os.environ.copy()
-                wine_env['WINEPREFIX'] = str(script_dir / '.wine')
+                wine_env['WINEPREFIX'] = str(tmpdir / '.wine')
                 wine_env['WINEDLLOVERRIDES'] = 'winemenubuilder.exe=d'
                 wine_env['WINEDEBUG'] = '-all'  # Suppress Wine debug output
 
                 result = subprocess.run(
                     cmd,
-                    cwd=str(aalm_dir),  # Run from AALM directory
+                    cwd=str(work_dir),  # Run from working directory
                     capture_output=True,
                     text=True,
                     timeout=60,
@@ -281,22 +294,22 @@ if run_button:
                 else:
                     avg_bll = None
 
-                # Find output CSV files - AALM creates CSVs in SimName/ folder in its directory
+                # Find output CSV files - AALM creates CSVs in SimName/ folder in working directory
                 output_csv = None
                 # We set the name to WebSim, so look for that
                 sim_name = 'WebSim'
-                output_csv = aalm_dir / sim_name / f"Out_{sim_name}.csv"
+                output_csv = work_dir / sim_name / f"Out_{sim_name}.csv"
 
                 if not output_csv.exists():
                     # Fallback 1: Check stdout for actual run name
                     sim_name_match = re.search(r'Run name = (\S+)', stdout)
                     if sim_name_match:
                         sim_name = sim_name_match.group(1).strip()
-                        output_csv = aalm_dir / sim_name / f"Out_{sim_name}.csv"
+                        output_csv = work_dir / sim_name / f"Out_{sim_name}.csv"
 
                 if not output_csv.exists():
-                    # Fallback 2: look for any Out_*.csv in AALM dir (most recent)
-                    out_csvs = list(aalm_dir.glob("*/Out_*.csv"))
+                    # Fallback 2: look for any Out_*.csv in working dir (most recent)
+                    out_csvs = list(work_dir.glob("*/Out_*.csv"))
                     if out_csvs:
                         # Get the most recently modified one
                         output_csv = max(out_csvs, key=lambda p: p.stat().st_mtime)
