@@ -275,7 +275,9 @@ if run_button:
                 wine_env['DISPLAY'] = ''  # Disable X11 to prevent GUI dialogs
 
                 # Pre-initialize Wine prefix silently (avoids "Wine configuration" popup)
-                if platform.system() == "Darwin" and not wine_prefix.exists():
+                # and remove symlinks to user folders to prevent permission dialogs
+                wine_prefix_initialized = (wine_prefix / 'drive_c').exists()
+                if platform.system() == "Darwin" and not wine_prefix_initialized:
                     wineboot_path = Path(wine_path).parent / 'wineboot' if wine_path != "wine" else "wineboot"
                     try:
                         subprocess.run(
@@ -284,6 +286,16 @@ if run_button:
                             capture_output=True,
                             timeout=60
                         )
+                        # Remove symlinks to user folders that trigger permission dialogs
+                        users_dir = wine_prefix / 'drive_c' / 'users'
+                        if users_dir.exists():
+                            for user_dir in users_dir.iterdir():
+                                if user_dir.is_dir():
+                                    for folder in ['Desktop', 'Documents', 'Downloads', 'Music', 'Pictures', 'Videos']:
+                                        folder_path = user_dir / folder
+                                        if folder_path.is_symlink():
+                                            folder_path.unlink()
+                                            folder_path.mkdir(exist_ok=True)
                     except Exception:
                         pass  # Continue even if wineboot fails
 

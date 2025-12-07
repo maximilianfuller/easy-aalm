@@ -151,6 +151,30 @@ def start_streamlit(port, app_dir):
         wine_bin_dir = str(Path(bundled_wine).parent)
         env['PATH'] = wine_bin_dir + ':' + env.get('PATH', '')
 
+    # Pre-initialize Wine prefix and remove symlinks to user folders
+    # This prevents macOS permission dialogs for Desktop/Downloads access
+    if platform.system() == 'Darwin' and bundled_wine and not (wine_temp / 'drive_c').exists():
+        wineboot_path = Path(bundled_wine).parent / 'wineboot'
+        try:
+            subprocess.run(
+                [str(wineboot_path), '--init'],
+                env=env,
+                capture_output=True,
+                timeout=60
+            )
+            # Remove symlinks to user folders that trigger permission dialogs
+            users_dir = wine_temp / 'drive_c' / 'users'
+            if users_dir.exists():
+                for user_dir in users_dir.iterdir():
+                    if user_dir.is_dir():
+                        for folder in ['Desktop', 'Documents', 'Downloads', 'Music', 'Pictures', 'Videos']:
+                            folder_path = user_dir / folder
+                            if folder_path.is_symlink():
+                                folder_path.unlink()
+                                folder_path.mkdir(exist_ok=True)
+        except Exception:
+            pass  # Continue even if wineboot fails
+
     try:
         _streamlit_process = subprocess.Popen(
             [python_exe, '-m', 'streamlit', 'run', str(app_py),
