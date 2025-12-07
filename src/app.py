@@ -265,8 +265,10 @@ if run_button:
                     cmd = [str(work_aalm_exe), str(input_file.name)]
 
                 # Set up environment to prevent Wine from accessing user folders and showing GUI
+                # Use a persistent temp location so Wine doesn't re-initialize every simulation
                 wine_env = os.environ.copy()
-                wine_prefix = tmpdir / '.wine'
+                wine_prefix = Path(tempfile.gettempdir()) / 'easy-aalm-wine'
+                wine_prefix.mkdir(exist_ok=True)
                 wine_env['WINEPREFIX'] = str(wine_prefix)
                 wine_env['WINEDLLOVERRIDES'] = 'winemenubuilder.exe=d;mscoree=d;mshtml=d'
                 wine_env['WINEDEBUG'] = '-all'  # Suppress Wine debug output

@@ -100,14 +100,16 @@ def start_streamlit(port, app_dir):
     env['STREAMLIT_SERVER_HEADLESS'] = 'true'
     env['STREAMLIT_BROWSER_GATHER_USAGE_STATS'] = 'false'
 
-    # Redirect HOME to app directory to prevent file access prompts
-    # This stops Streamlit/Wine from looking in ~/Desktop, ~/Documents, etc.
-    env['HOME'] = str(app_dir)
-    env['STREAMLIT_HOME'] = str(app_dir)
+    # Use a temp directory for Wine prefix (app bundle is read-only on macOS)
+    import tempfile
+    wine_temp = Path(tempfile.gettempdir()) / 'easy-aalm-wine'
+    wine_temp.mkdir(exist_ok=True)
 
-    # Wine-specific settings to prevent user folder access
-    env['WINEPREFIX'] = str(app_dir / '.wine')
-    env['WINEDLLOVERRIDES'] = 'winemenubuilder.exe=d'  # Disable menu/desktop integration
+    # Wine-specific settings to prevent user folder access and GUI dialogs
+    env['WINEPREFIX'] = str(wine_temp)
+    env['WINEDLLOVERRIDES'] = 'winemenubuilder.exe=d;mscoree=d;mshtml=d'
+    env['WINEDEBUG'] = '-all'
+    env['DISPLAY'] = ''  # Disable X11 GUI dialogs
 
     # Add bundled Wine to PATH if available
     bundled_wine = get_bundled_wine()
