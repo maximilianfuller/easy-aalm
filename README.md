@@ -27,15 +27,23 @@ Get the latest release from the [Releases page](https://github.com/maximilianful
 
 The apps are fully self-contained with bundled Python and dependencies.
 
-### Local Development
+### Development
 
 To run from source:
 
 ```bash
+git clone https://github.com/maximilianfuller/easy-aalm.git
+cd easy-aalm
 ./dev.sh
 ```
 
-This creates a Python virtual environment, installs dependencies, and runs Streamlit at `http://localhost:8501`.
+This creates a Python virtual environment, installs dependencies (Streamlit, Pandas, Plotly), and opens the app at `http://localhost:8501`.
+
+**Requirements:**
+- Python 3.9+
+- macOS: Wine (`brew install --cask wine-crossover`) to run the AALM Windows executable
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for build and architecture details.
 
 ---
 
