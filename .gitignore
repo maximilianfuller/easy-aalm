@@ -62,8 +62,13 @@ Thumbs.db
 *.log
 Easy-AALM.zip
 
-# PyInstaller build artifacts
-build/
+# PyInstaller build artifacts (but not our build/ config directory)
+/build/
+!/build/*.spec
+!/build/*.iss
+!/build/*.plist
+!/build/*.sh
+!/build/*.txt
 dist/
 *.spec.bak
 .build-venv/

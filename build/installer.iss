@@ -8,7 +8,7 @@ AppPublisher=Easy AALM
 AppPublisherURL=https://github.com/maximilianfuller/easy-aalm
 DefaultDirName={autopf}\Easy AALM
 DefaultGroupName=Easy AALM
-OutputDir=.
+OutputDir=..
 OutputBaseFilename=Easy-AALM-Windows-Setup
 Compression=lzma2
 SolidCompression=yes
@@ -19,7 +19,7 @@ PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 
 [Files]
-Source: "dist\EasyAALM\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+Source: "..\dist\EasyAALM\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
 [Icons]
 Name: "{group}\Easy AALM"; Filename: "{app}\Easy AALM.exe"
