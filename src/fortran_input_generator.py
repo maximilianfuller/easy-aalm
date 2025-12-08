@@ -9,6 +9,17 @@ This module provides the core input generation logic used by both:
 
 from pathlib import Path
 from typing import List, Tuple, Optional
+from aalm_constants import (
+    WATER_INTAKE_AMOUNTS,
+    SOIL_INTAKE_AMOUNTS,
+    DUST_INTAKE_AMOUNTS,
+    AIR_INTAKE_AMOUNTS,
+    RBA_WATER,
+    RBA_AIR,
+    RBA_FOOD,
+    RBA_SOIL,
+    RBA_DUST,
+)
 
 
 def format_number(value: float) -> str:
@@ -46,7 +57,7 @@ def generate_fortran_input(
     Generate AALM Fortran input file content from template and parameters.
 
     Args:
-        template_path: Path to template file (should be LeggettInput_ExcelDefaults.txt)
+        template_path: Path to template file (should be LeggettInput_Golden.txt)
         age_range: (start_age, end_age) in years
         sex: "Male" or "Female"
         food_ug_day: Food lead intake (μg/day)
@@ -91,8 +102,37 @@ def generate_fortran_input(
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify sex
+        # EPA model convention: sex=0 is Female, sex=1 is Male
         elif len(parts) > 1 and parts[0] == 'Growth' and parts[1] == 'sex':
-            parts[3] = '1' if sex == "Female" else '0'
+            parts[3] = '0' if sex == "Female" else '1'
+            modified_lines.append(','.join(parts) + '\n')
+
+        # Modify sex-specific growth parameters
+        # Golden template (Female sex=0): wbirth=3.3, wadult=34, lambda=0.017, HCTA=0.41
+        # Male (sex=1): wbirth=3.5, wadult=50, lambda=0.0095, HCTA=0.46
+        elif len(parts) > 1 and parts[0] == 'Growth' and parts[1] == 'wbirth':
+            parts[3] = '3.5' if sex == "Male" else '3.3'
+            modified_lines.append(','.join(parts) + '\n')
+
+        elif len(parts) > 1 and parts[0] == 'Growth' and parts[1] == 'wchild':
+            parts[3] = '23' if sex == "Male" else '22'
+            modified_lines.append(','.join(parts) + '\n')
+
+        elif len(parts) > 1 and parts[0] == 'Growth' and parts[1] == 'wadult':
+            parts[3] = '50' if sex == "Male" else '34'
+            modified_lines.append(','.join(parts) + '\n')
+
+        elif len(parts) > 1 and parts[0] == 'Growth' and parts[1] == 'lambda':
+            parts[3] = '0.0095' if sex == "Male" else '0.017'
+            modified_lines.append(','.join(parts) + '\n')
+
+        elif len(parts) > 1 and parts[0] == 'Growth' and parts[1] == 'LB':
+            parts[3] = '0.88' if sex == "Male" else '0.85'
+            modified_lines.append(','.join(parts) + '\n')
+
+        # Modify sex-specific physiological parameters
+        elif len(parts) > 1 and parts[0] == 'Phys' and parts[1] == 'HCTA':
+            parts[3] = '0.46' if sex == "Male" else '0.41'
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify food intake
@@ -112,11 +152,9 @@ def generate_fortran_input(
         # Modify water intake amounts (apply scale factor)
         elif len(parts) > 1 and parts[0] == 'Water' and parts[1] == 'intake_amt':
             num_vals = int(parts[2])
-            # Excel defaults (L/day)
-            standard_intake = [0.2, 0.3, 0.35, 0.45, 0.55, 0.7, 1.04]
             for i in range(num_vals):
-                if len(parts) > 3 + i and i < len(standard_intake):
-                    parts[3 + i] = format_number(standard_intake[i] * water_scale_factor)
+                if len(parts) > 3 + i and i < len(WATER_INTAKE_AMOUNTS):
+                    parts[3 + i] = format_number(WATER_INTAKE_AMOUNTS[i] * water_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify soil concentration
@@ -127,11 +165,9 @@ def generate_fortran_input(
         # Modify soil intake amounts (apply scale factor)
         elif len(parts) > 1 and parts[0] == 'Soil' and parts[1] == 'intake_amt':
             num_vals = int(parts[2])
-            # Excel defaults (g/day)
-            standard_intake = [0.018, 0.032, 0.041, 0.036, 0.027, 0.014]
             for i in range(num_vals):
-                if len(parts) > 3 + i and i < len(standard_intake):
-                    parts[3 + i] = format_number(standard_intake[i] * soil_scale_factor)
+                if len(parts) > 3 + i and i < len(SOIL_INTAKE_AMOUNTS):
+                    parts[3 + i] = format_number(SOIL_INTAKE_AMOUNTS[i] * soil_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify soil RBA (Relative Bioavailability)
@@ -147,11 +183,9 @@ def generate_fortran_input(
         # Modify dust intake amounts (apply scale factor)
         elif len(parts) > 1 and parts[0] == 'Dust' and parts[1] == 'intake_amt':
             num_vals = int(parts[2])
-            # Excel defaults (g/day)
-            standard_intake = [0.022, 0.039, 0.05, 0.044, 0.033, 0.017]
             for i in range(num_vals):
-                if len(parts) > 3 + i and i < len(standard_intake):
-                    parts[3 + i] = format_number(standard_intake[i] * dust_scale_factor)
+                if len(parts) > 3 + i and i < len(DUST_INTAKE_AMOUNTS):
+                    parts[3 + i] = format_number(DUST_INTAKE_AMOUNTS[i] * dust_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify air concentration
@@ -162,23 +196,21 @@ def generate_fortran_input(
         # Modify air intake amounts (apply scale factor)
         elif len(parts) > 1 and parts[0] == 'Air' and parts[1] == 'intake_amt':
             num_vals = int(parts[2])
-            # Excel defaults (m³/day)
-            standard_intake = [5.4, 8, 8.9, 10.1, 12, 15.2, 16.3, 15.7, 16, 15.7, 14.2, 12.9, 12.2]
             for i in range(num_vals):
-                if len(parts) > 3 + i and i < len(standard_intake):
-                    parts[3 + i] = format_number(standard_intake[i] * air_scale_factor)
+                if len(parts) > 3 + i and i < len(AIR_INTAKE_AMOUNTS):
+                    parts[3 + i] = format_number(AIR_INTAKE_AMOUNTS[i] * air_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
         # Set RBA values for all sources
         elif len(parts) > 1 and parts[1] == 'RBA':
             if parts[0] == 'Water':
-                parts[3] = "1"  # Water has 100% bioavailability
+                parts[3] = format_number(RBA_WATER)
             elif parts[0] == 'Air':
-                parts[3] = "1"  # Air has 100% bioavailability
+                parts[3] = format_number(RBA_AIR)
             elif parts[0] == 'Food':
-                parts[3] = "1"  # Food has 100% bioavailability
+                parts[3] = format_number(RBA_FOOD)
             elif parts[0] == 'Dust':
-                parts[3] = "0.6"  # Dust has 60% bioavailability
+                parts[3] = format_number(RBA_DUST)
             modified_lines.append(','.join(parts) + '\n')
 
         else:

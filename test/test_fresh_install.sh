@@ -175,7 +175,7 @@ EXPECTED_ITEMS=(
     "venv/bin/python"
     "app.py"
     "fortran_input_generator.py"
-    "templates/LeggettInput_ExcelDefaults.txt"
+    "templates/LeggettInput_Golden.txt"
     "aalm_original/AALM_64.exe"
 )
 

@@ -46,7 +46,7 @@ REQUIRED_FILES=(
     "Contents/Resources/run.sh"
     "Contents/Resources/app.py"
     "Contents/Resources/fortran_input_generator.py"
-    "Contents/Resources/templates/LeggettInput_ExcelDefaults.txt"
+    "Contents/Resources/templates/LeggettInput_Golden.txt"
     "Contents/Resources/aalm_original/AALM_64.exe"
 )
 
@@ -149,7 +149,7 @@ if [ -d "$USER_DATA_DIR" ]; then
         "venv"
         "app.py"
         "fortran_input_generator.py"
-        "templates/LeggettInput_ExcelDefaults.txt"
+        "templates/LeggettInput_Golden.txt"
         "aalm_original/AALM_64.exe"
     )
 

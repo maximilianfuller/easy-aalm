@@ -12,6 +12,14 @@ import re
 from pathlib import Path
 import tempfile
 import shutil
+from aalm_constants import (
+    WATER_INTAKE_AGES_DAYS,
+    WATER_INTAKE_AMOUNTS,
+    SOIL_INTAKE_AGES_DAYS,
+    SOIL_INTAKE_AMOUNTS,
+    DUST_INTAKE_AGES_DAYS,
+    DUST_INTAKE_AMOUNTS,
+)
 
 st.set_page_config(
     page_title="Easy AALM - Lead Exposure Model",
@@ -30,22 +38,19 @@ col1, spacer, col2 = st.columns([1, 0.2, 1])
 with col1:
     age_range = st.slider("Age Range (years)", 0, 90, (0, 90), help="Simulation from birth to specified age")
 with col2:
-    sex = st.radio("Sex", ["Male", "Female"], horizontal=True)
+    sex = st.radio("Sex", ["Female", "Male"], horizontal=True)
 
 st.markdown("---")
 
 # All 5 exposure pathways in columns
-header_col1, header_col2 = st.columns([3, 1])
-with header_col1:
-    st.markdown("### Lead Exposure Sources")
-with header_col2:
-    if st.button("Clear All Sources", help="Set all lead concentrations to zero"):
-        st.session_state.water_conc = 0.0
-        st.session_state.food_amt = 0.0
-        st.session_state.soil_conc = 0
-        st.session_state.dust_conc = 0
-        st.session_state.air_conc = 0.0
-        st.rerun()
+st.markdown("### Lead Exposure Sources")
+if st.button("Clear All Sources", help="Set all lead concentrations to zero"):
+    st.session_state.water_conc = 0.0
+    st.session_state.food_amt = 0.0
+    st.session_state.soil_conc = 0
+    st.session_state.dust_conc = 0
+    st.session_state.air_conc = 0.0
+    st.rerun()
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -85,7 +90,7 @@ with col2:
 # SOIL column
 with col3:
     st.markdown("**Soil**")
-    soil_ppm = st.number_input("Concentration (PPM)", 0, 10000, 25, 10, key="soil_conc")
+    soil_ppm = st.number_input("Concentration (PPM)", 0, 10000, 652, 10, key="soil_conc")
 
     soil_scale_pct = st.number_input(
         "Intake Scale (%)",
@@ -98,11 +103,8 @@ with col3:
     soil_scale_factor = soil_scale_pct / 100.0
 
     with st.expander("Schedule"):
-        # Excel defaults
-        intake_ages_days = [0, 91.25, 365, 1825, 3650, 5475]
-        intake_ages_years = [d/365 for d in intake_ages_days]
-        intake_amt_grams = [0.018, 0.032, 0.041, 0.036, 0.027, 0.014]
-        scaled_intake = [amt * soil_scale_factor for amt in intake_amt_grams]
+        intake_ages_years = [d/365 for d in SOIL_INTAKE_AGES_DAYS]
+        scaled_intake = [amt * soil_scale_factor for amt in SOIL_INTAKE_AMOUNTS]
         intake_df = pd.DataFrame({
             'Age (years)': intake_ages_years,
             'Intake (g/day)': scaled_intake
@@ -112,7 +114,7 @@ with col3:
 # DUST column
 with col4:
     st.markdown("**Dust**")
-    dust_ppm = st.number_input("Concentration (PPM)", 0, 10000, 175, 10, key="dust_conc")
+    dust_ppm = st.number_input("Concentration (PPM)", 0, 10000, 10, 10, key="dust_conc")
 
     dust_scale_pct = st.number_input(
         "Intake Scale (%)",
@@ -206,7 +208,7 @@ if run_button:
                 from fortran_input_generator import generate_fortran_input
 
                 # Template file is in the same directory as this script
-                template_path = Path(__file__).parent / "templates" / "LeggettInput_ExcelDefaults.txt"
+                template_path = Path(__file__).parent / "templates" / "LeggettInput_Golden.txt"
                 if not template_path.exists():
                     st.error(f"Template file not found at {template_path}")
                     st.stop()
@@ -236,6 +238,13 @@ if run_button:
                 shutil.copy(aalm_exe, work_dir)
                 work_aalm_exe = work_dir / aalm_exe.name
 
+                # Set execute permissions on Linux/Unix systems (needed after copy)
+                # Platform and stat are imported below - we'll move them up
+                import platform
+                import stat
+                if platform.system() != "Windows":
+                    os.chmod(work_aalm_exe, os.stat(work_aalm_exe).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
                 # Copy RespMod directory (required by AALM)
                 respmod_src = aalm_exe.parent / "RespMod"
                 if respmod_src.exists():
@@ -252,7 +261,6 @@ if run_button:
 
                 # Run AALM from working directory
                 # On macOS, use Wine to run the Windows executable
-                import platform
                 script_dir = Path(__file__).parent
                 if platform.system() == "Darwin":
                     # Find Wine - check bundled location first
@@ -430,7 +438,8 @@ if run_button:
                                     "Download Input File",
                                     input_file_content,
                                     "LeggettInput_web.txt",
-                                    "text/plain"
+                                    "text/plain",
+                                    key="download_input_file"
                                 )
                             else:
                                 st.warning("Input file not found")
@@ -448,7 +457,8 @@ if run_button:
                                 "Download CSV (Daily)",
                                 csv_data,
                                 f"aalm_results_{age_range[1]}y.csv",
-                                "text/csv"
+                                "text/csv",
+                                key="download_csv_daily"
                             )
 
                         with col2:
@@ -460,7 +470,8 @@ if run_button:
                                 "Download CSV (Weekly)",
                                 csv_weekly_data,
                                 f"aalm_results_{age_range[1]}y_weekly.csv",
-                                "text/csv"
+                                "text/csv",
+                                key="download_csv_weekly"
                             )
 
                     except Exception as e:
