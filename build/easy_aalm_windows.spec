@@ -16,6 +16,7 @@ AALM_DIR = PROJECT_ROOT / 'aalm_original'
 
 datas = [
     (str(SRC_DIR / 'app.py'), '.'),
+    (str(SRC_DIR / 'aalm_constants.py'), '.'),
     (str(SRC_DIR / 'fortran_input_generator.py'), '.'),
     (str(SRC_DIR / 'templates'), 'templates'),
     (str(AALM_DIR / 'AALM_64.exe'), 'aalm_original'),
