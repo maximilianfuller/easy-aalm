@@ -9,9 +9,20 @@ import plotly.graph_objects as go
 import subprocess
 import os
 import re
+import platform
 from pathlib import Path
 import tempfile
 import shutil
+
+# Windows: flags to hide console windows from subprocesses
+if platform.system() == 'Windows':
+    SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW
+    STARTUPINFO = subprocess.STARTUPINFO()
+    STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    STARTUPINFO.wShowWindow = subprocess.SW_HIDE
+else:
+    SUBPROCESS_FLAGS = 0
+    STARTUPINFO = None
 from aalm_constants import (
     WATER_INTAKE_AGES_DAYS,
     WATER_INTAKE_AMOUNTS,
@@ -171,6 +182,10 @@ with col2:
 
 st.markdown("---")
 
+# Initialize session state for results
+if 'simulation_results' not in st.session_state:
+    st.session_state.simulation_results = None
+
 # Main content area
 if run_button:
     with st.spinner("Running AALM simulation..."):
@@ -204,7 +219,13 @@ if run_button:
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir = Path(tmpdir)
 
+                # Initialize profiling
+                import time
+                profiling_times = {}
+                overall_start = time.time()
+
                 # Generate input file using shared module
+                start_time = time.time()
                 from fortran_input_generator import generate_fortran_input
 
                 # Template file is in the same directory as this script
@@ -228,8 +249,10 @@ if run_button:
                     air_scale_factor=air_scale_factor,
                     sim_name='WebSim'
                 )
+                profiling_times['input_generation'] = time.time() - start_time
 
                 # Copy AALM and required files to temp directory (app bundle is read-only on macOS)
+                start_time = time.time()
                 import shutil
                 work_dir = tmpdir / "aalm_work"
                 work_dir.mkdir(exist_ok=True)
@@ -258,6 +281,7 @@ if run_button:
                 # Create output directory for WebSim (Fortran doesn't create it!)
                 output_dir = work_dir / "WebSim"
                 output_dir.mkdir(exist_ok=True)
+                profiling_times['file_setup'] = time.time() - start_time
 
                 # Run AALM from working directory
                 # On macOS, use Wine to run the Windows executable
@@ -284,6 +308,7 @@ if run_button:
 
                 # Pre-initialize Wine prefix silently (avoids "Wine configuration" popup)
                 # and remove symlinks to user folders to prevent permission dialogs
+                start_time = time.time()
                 wine_prefix_initialized = (wine_prefix / 'drive_c').exists()
                 if platform.system() == "Darwin" and not wine_prefix_initialized:
                     wineboot_path = Path(wine_path).parent / 'wineboot' if wine_path != "wine" else "wineboot"
@@ -292,7 +317,9 @@ if run_button:
                             [str(wineboot_path), '--init'],
                             env=wine_env,
                             capture_output=True,
-                            timeout=60
+                            timeout=60,
+                            creationflags=SUBPROCESS_FLAGS,
+                            startupinfo=STARTUPINFO
                         )
                         # Remove symlinks to user folders that trigger permission dialogs
                         users_dir = wine_prefix / 'drive_c' / 'users'
@@ -306,15 +333,21 @@ if run_button:
                                             folder_path.mkdir(exist_ok=True)
                     except Exception:
                         pass  # Continue even if wineboot fails
+                profiling_times['wine_init'] = time.time() - start_time
 
+                # Run AALM simulation
+                start_time = time.time()
                 result = subprocess.run(
                     cmd,
                     cwd=str(work_dir),  # Run from working directory
                     capture_output=True,
                     text=True,
                     timeout=60,
-                    env=wine_env
+                    env=wine_env,
+                    creationflags=SUBPROCESS_FLAGS,
+                    startupinfo=STARTUPINFO
                 )
+                profiling_times['aalm_execution'] = time.time() - start_time
 
                 if result.returncode != 0:
                     st.error(f"AALM simulation failed:\n{result.stderr}")
@@ -322,6 +355,7 @@ if run_button:
                     st.stop()
 
                 # Parse output
+                start_time = time.time()
                 stdout = result.stdout
 
                 # Extract average BLL
@@ -350,138 +384,21 @@ if run_button:
                     if out_csvs:
                         # Get the most recently modified one
                         output_csv = max(out_csvs, key=lambda p: p.stat().st_mtime)
+                profiling_times['output_parsing'] = time.time() - start_time
 
-                # Display results
-                st.markdown("## Results")
-                st.success("Simulation Complete!")
+                # Calculate total time
+                profiling_times['total'] = time.time() - overall_start
 
-                st.markdown("### Summary")
-
-                col1, col2 = st.columns(2)
-                with col1:
-                    if avg_bll is not None:
-                        # Convert from µg/dL to µg/L (multiply by 10)
-                        avg_bll_per_L = avg_bll * 10
-                        st.metric("Average Blood Lead Level", f"{avg_bll_per_L:.1f} μg/L")
-                with col2:
-                    st.metric("Age Range", f"{age_range[0]}-{age_range[1]} years")
-
-                # Try to parse and plot CSV if available
-                if output_csv and output_csv.exists():
-                    try:
-                        df = pd.read_csv(output_csv)
-                        # Strip whitespace from column names
-                        df.columns = df.columns.str.strip()
-
-                        st.markdown("---")
-                        st.markdown("### Blood Lead Level Over Time")
-
-                        # Create plot - use 'Days' and 'Cblood' columns from Out_*.csv
-                        fig = go.Figure()
-                        if 'Days' in df.columns and 'Cblood' in df.columns:
-                            # Convert Cblood from µg/dL to µg/L (multiply by 10)
-                            fig.add_trace(go.Scatter(
-                                x=df['Days'] / 365,  # Convert to years
-                                y=df['Cblood'] * 10,  # Convert to µg/L
-                                mode='lines',
-                                name='Blood Lead Level',
-                                line=dict(color='#D32F2F', width=2)
-                            ))
-
-                            fig.update_layout(
-                                xaxis_title="Age (years)",
-                                yaxis_title="Blood Lead Level (μg/L)",
-                                template="plotly_white",
-                                height=400
-                            )
-
-                            st.plotly_chart(fig, width='stretch')
-
-                        # Fortran input file as hidden expander
-                        with st.expander("Show Fortran Input File"):
-                            st.caption("This shows the parameters sent to the AALM Fortran model")
-
-                            # Read and display the input file
-                            if input_file.exists():
-                                # Parse input file into a table
-                                input_data = []
-                                with open(input_file, 'r') as f:
-                                    for line in f:
-                                        line = line.strip()
-                                        if line:
-                                            parts = line.split(',')
-                                            input_data.append(parts)
-
-                                # Create DataFrame with appropriate columns
-                                max_cols = max(len(row) for row in input_data) if input_data else 0
-                                col_names = ['Parameter', 'Variable', 'Count'] + [f'Value{i}' for i in range(1, max_cols - 2)]
-
-                                # Pad rows to have same length
-                                padded_data = []
-                                for row in input_data:
-                                    padded_row = row + [''] * (max_cols - len(row))
-                                    padded_data.append(padded_row)
-
-                                input_df = pd.DataFrame(padded_data, columns=col_names[:max_cols])
-
-                                # Display as table
-                                st.dataframe(
-                                    input_df,
-                                    width='stretch',
-                                    height=400
-                                )
-
-                                # Also provide download button for input file
-                                with open(input_file, 'r') as f:
-                                    input_file_content = f.read()
-                                st.download_button(
-                                    "Download Input File",
-                                    input_file_content,
-                                    "LeggettInput_web.txt",
-                                    "text/plain",
-                                    key="download_input_file"
-                                )
-                            else:
-                                st.warning("Input file not found")
-
-                        # Export options
-                        st.markdown("---")
-                        st.markdown("### Export Data")
-
-                        col1, col2 = st.columns(2)
-
-                        with col1:
-                            # CSV download
-                            csv_data = df.to_csv(index=False)
-                            st.download_button(
-                                "Download CSV (Daily)",
-                                csv_data,
-                                f"aalm_results_{age_range[1]}y.csv",
-                                "text/csv",
-                                key="download_csv_daily"
-                            )
-
-                        with col2:
-                            # CSV download (weekly averages)
-                            # Group by weeks (every 7 rows)
-                            df_weekly = df.iloc[::7].copy()  # Take every 7th row
-                            csv_weekly_data = df_weekly.to_csv(index=False)
-                            st.download_button(
-                                "Download CSV (Weekly)",
-                                csv_weekly_data,
-                                f"aalm_results_{age_range[1]}y_weekly.csv",
-                                "text/csv",
-                                key="download_csv_weekly"
-                            )
-
-                    except Exception as e:
-                        st.warning(f"Could not parse output CSV: {e}")
-                        st.text("Raw output:")
-                        st.code(stdout)
-
-                else:
-                    st.info("Output CSV not found. Showing raw output:")
-                    st.code(stdout)
+                # Store results in session state
+                st.session_state.simulation_results = {
+                    'avg_bll': avg_bll,
+                    'age_range': age_range,
+                    'sex': sex,
+                    'output_csv': output_csv,
+                    'input_file': input_file,
+                    'stdout': stdout,
+                    'profiling': profiling_times
+                }
 
         except subprocess.TimeoutExpired:
             st.error("Simulation timed out. Try reducing the age range.")
@@ -489,6 +406,165 @@ if run_button:
             st.error(f"Error: {str(e)}")
             import traceback
             st.code(traceback.format_exc())
+
+# Display results from session state (persists across reruns)
+if st.session_state.simulation_results:
+    results = st.session_state.simulation_results
+
+    st.markdown("## Results")
+    st.success("Simulation Complete!")
+
+    st.markdown("### Summary")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if results['avg_bll'] is not None:
+            # Convert from µg/dL to µg/L (multiply by 10)
+            avg_bll_per_L = results['avg_bll'] * 10
+            st.metric("Average Blood Lead Level", f"{avg_bll_per_L:.1f} μg/L")
+    with col2:
+        st.metric("Age Range", f"{results['age_range'][0]}-{results['age_range'][1]} years")
+
+    # Display profiling data in a collapsible expander
+    if 'profiling' in results and results['profiling']:
+        with st.expander("⏱️ Performance Profiling"):
+            prof = results['profiling']
+            st.caption("Time spent in each stage of the simulation:")
+
+            # Create a bar chart of profiling data
+            prof_df = pd.DataFrame([
+                {"Stage": "Input Generation", "Time (ms)": prof.get('input_generation', 0) * 1000},
+                {"Stage": "File Setup", "Time (ms)": prof.get('file_setup', 0) * 1000},
+                {"Stage": "Wine Init", "Time (ms)": prof.get('wine_init', 0) * 1000},
+                {"Stage": "AALM Execution", "Time (ms)": prof.get('aalm_execution', 0) * 1000},
+                {"Stage": "Output Parsing", "Time (ms)": prof.get('output_parsing', 0) * 1000},
+            ])
+
+            # Display as metrics in columns
+            cols = st.columns(5)
+            for idx, row in prof_df.iterrows():
+                with cols[idx]:
+                    st.metric(row['Stage'], f"{row['Time (ms)']:.1f} ms")
+
+            # Show total time
+            st.markdown(f"**Total Time:** {prof.get('total', 0)*1000:.1f} ms")
+
+    # Try to parse and plot CSV if available
+    if results['output_csv'] and results['output_csv'].exists():
+        try:
+            df = pd.read_csv(results['output_csv'])
+            # Strip whitespace from column names
+            df.columns = df.columns.str.strip()
+
+            st.markdown("---")
+            st.markdown("### Blood Lead Level Over Time")
+
+            # Create plot - use 'Days' and 'Cblood' columns from Out_*.csv
+            fig = go.Figure()
+            if 'Days' in df.columns and 'Cblood' in df.columns:
+                # Convert Cblood from µg/dL to µg/L (multiply by 10)
+                fig.add_trace(go.Scatter(
+                    x=df['Days'] / 365,  # Convert to years
+                    y=df['Cblood'] * 10,  # Convert to µg/L
+                    mode='lines',
+                    name='Blood Lead Level',
+                    line=dict(color='#D32F2F', width=2)
+                ))
+
+                fig.update_layout(
+                    xaxis_title="Age (years)",
+                    yaxis_title="Blood Lead Level (μg/L)",
+                    template="plotly_white",
+                    height=400
+                )
+
+                st.plotly_chart(fig, width='stretch')
+
+            # Fortran input file as hidden expander
+            with st.expander("Show Fortran Input File"):
+                st.caption("This shows the parameters sent to the AALM Fortran model")
+
+                # Read and display the input file
+                if results['input_file'].exists():
+                    # Parse input file into a table
+                    input_data = []
+                    with open(results['input_file'], 'r') as f:
+                        for line in f:
+                            line = line.strip()
+                            if line:
+                                parts = line.split(',')
+                                input_data.append(parts)
+
+                    # Create DataFrame with appropriate columns
+                    max_cols = max(len(row) for row in input_data) if input_data else 0
+                    col_names = ['Parameter', 'Variable', 'Count'] + [f'Value{i}' for i in range(1, max_cols - 2)]
+
+                    # Pad rows to have same length
+                    padded_data = []
+                    for row in input_data:
+                        padded_row = row + [''] * (max_cols - len(row))
+                        padded_data.append(padded_row)
+
+                    input_df = pd.DataFrame(padded_data, columns=col_names[:max_cols])
+
+                    # Display as table
+                    st.dataframe(
+                        input_df,
+                        width='stretch',
+                        height=400
+                    )
+
+                    # Also provide download button for input file
+                    with open(results['input_file'], 'r') as f:
+                        input_file_content = f.read()
+                    st.download_button(
+                        "Download Input File",
+                        input_file_content,
+                        "LeggettInput_web.txt",
+                        "text/plain",
+                        key="download_input_file"
+                    )
+                else:
+                    st.warning("Input file not found")
+
+            # Export options
+            st.markdown("---")
+            st.markdown("### Export Data")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                # CSV download
+                csv_data = df.to_csv(index=False)
+                st.download_button(
+                    "Download CSV (Daily)",
+                    csv_data,
+                    f"aalm_results_{results['age_range'][1]}y.csv",
+                    "text/csv",
+                    key="download_csv_daily"
+                )
+
+            with col2:
+                # CSV download (weekly averages)
+                # Group by weeks (every 7 rows)
+                df_weekly = df.iloc[::7].copy()  # Take every 7th row
+                csv_weekly_data = df_weekly.to_csv(index=False)
+                st.download_button(
+                    "Download CSV (Weekly)",
+                    csv_weekly_data,
+                    f"aalm_results_{results['age_range'][1]}y_weekly.csv",
+                    "text/csv",
+                    key="download_csv_weekly"
+                )
+
+        except Exception as e:
+            st.warning(f"Could not parse output CSV: {e}")
+            st.text("Raw output:")
+            st.code(results['stdout'])
+
+    else:
+        st.info("Output CSV not found. Showing raw output:")
+        st.code(results['stdout'])
 
 else:
     # Initial state

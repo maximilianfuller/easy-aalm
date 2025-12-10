@@ -13,6 +13,16 @@ import platform
 from pathlib import Path
 from multiprocessing import freeze_support
 
+# Windows: flags to hide console windows from subprocesses
+if platform.system() == 'Windows':
+    SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW
+    STARTUPINFO = subprocess.STARTUPINFO()
+    STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    STARTUPINFO.wShowWindow = subprocess.SW_HIDE
+else:
+    SUBPROCESS_FLAGS = 0
+    STARTUPINFO = None
+
 _streamlit_process = None
 
 
@@ -160,7 +170,9 @@ def start_streamlit(port, app_dir):
                 [str(wineboot_path), '--init'],
                 env=env,
                 capture_output=True,
-                timeout=60
+                timeout=60,
+                creationflags=SUBPROCESS_FLAGS,
+                startupinfo=STARTUPINFO
             )
             # Remove symlinks to user folders that trigger permission dialogs
             users_dir = wine_temp / 'drive_c' / 'users'
@@ -184,7 +196,9 @@ def start_streamlit(port, app_dir):
             cwd=str(app_dir),
             env=env,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stderr=subprocess.PIPE,
+            creationflags=SUBPROCESS_FLAGS,
+            startupinfo=STARTUPINFO
         )
         return None
     except Exception as e:
@@ -265,7 +279,9 @@ def main():
         try:
             test_result = subprocess.run(
                 [python_exe, '-c', 'import sys; print(sys.version)'],
-                capture_output=True, text=True, timeout=10
+                capture_output=True, text=True, timeout=10,
+                creationflags=SUBPROCESS_FLAGS,
+                startupinfo=STARTUPINFO
             )
             if test_result.returncode == 0:
                 log(f"Python version: {test_result.stdout.strip()[:50]}")
