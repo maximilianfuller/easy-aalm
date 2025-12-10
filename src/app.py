@@ -389,13 +389,21 @@ if run_button:
                 # Calculate total time
                 profiling_times['total'] = time.time() - overall_start
 
-                # Store results in session state
+                # Read CSV and input file contents before temp dir is cleaned up
+                csv_content = None
+                input_content = None
+                if output_csv and output_csv.exists():
+                    csv_content = output_csv.read_text()
+                if input_file.exists():
+                    input_content = input_file.read_text()
+
+                # Store results in session state (with file contents, not paths)
                 st.session_state.simulation_results = {
                     'avg_bll': avg_bll,
                     'age_range': age_range,
                     'sex': sex,
-                    'output_csv': output_csv,
-                    'input_file': input_file,
+                    'csv_content': csv_content,
+                    'input_content': input_content,
                     'stdout': stdout,
                     'profiling': profiling_times
                 }
@@ -450,9 +458,10 @@ if st.session_state.simulation_results:
             st.markdown(f"**Total Time:** {prof.get('total', 0)*1000:.1f} ms")
 
     # Try to parse and plot CSV if available
-    if results['output_csv'] and results['output_csv'].exists():
+    if results.get('csv_content'):
         try:
-            df = pd.read_csv(results['output_csv'])
+            from io import StringIO
+            df = pd.read_csv(StringIO(results['csv_content']))
             # Strip whitespace from column names
             df.columns = df.columns.str.strip()
 
@@ -484,16 +493,15 @@ if st.session_state.simulation_results:
             with st.expander("Show Fortran Input File"):
                 st.caption("This shows the parameters sent to the AALM Fortran model")
 
-                # Read and display the input file
-                if results['input_file'].exists():
+                # Display the input file content
+                if results.get('input_content'):
                     # Parse input file into a table
                     input_data = []
-                    with open(results['input_file'], 'r') as f:
-                        for line in f:
-                            line = line.strip()
-                            if line:
-                                parts = line.split(',')
-                                input_data.append(parts)
+                    for line in results['input_content'].splitlines():
+                        line = line.strip()
+                        if line:
+                            parts = line.split(',')
+                            input_data.append(parts)
 
                     # Create DataFrame with appropriate columns
                     max_cols = max(len(row) for row in input_data) if input_data else 0
@@ -515,11 +523,9 @@ if st.session_state.simulation_results:
                     )
 
                     # Also provide download button for input file
-                    with open(results['input_file'], 'r') as f:
-                        input_file_content = f.read()
                     st.download_button(
                         "Download Input File",
-                        input_file_content,
+                        results['input_content'],
                         "LeggettInput_web.txt",
                         "text/plain",
                         key="download_input_file"
