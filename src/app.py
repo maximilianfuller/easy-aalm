@@ -23,14 +23,37 @@ if platform.system() == 'Windows':
 else:
     SUBPROCESS_FLAGS = 0
     STARTUPINFO = None
-from aalm_constants import (
-    WATER_INTAKE_AGES_DAYS,
-    WATER_INTAKE_AMOUNTS,
-    SOIL_INTAKE_AGES_DAYS,
-    SOIL_INTAKE_AMOUNTS,
-    DUST_INTAKE_AGES_DAYS,
-    DUST_INTAKE_AMOUNTS,
-)
+
+
+@st.cache_data
+def parse_golden_file_schedules(template_path: str) -> dict:
+    """Parse intake schedules from the golden template file."""
+    schedules = {}
+    with open(template_path, 'r') as f:
+        for line in f:
+            parts = line.strip().split(',')
+            if len(parts) < 4:
+                continue
+            source = parts[0]  # Water, Soil, Dust, Air
+            param = parts[1]   # intake_ages, intake_amt
+            count = int(parts[2]) if parts[2].isdigit() else 0
+
+            if param == 'intake_ages':
+                values = [float(x) for x in parts[3:3+count] if x]
+                schedules[f'{source}_ages'] = values
+            elif param == 'intake_amt':
+                values = [float(x) for x in parts[3:3+count] if x]
+                schedules[f'{source}_amt'] = values
+    return schedules
+
+
+# Get template path and parse schedules
+_template_path = Path(__file__).resolve().parent / "templates" / "LeggettInput_Golden.txt"
+if _template_path.exists():
+    SCHEDULES = parse_golden_file_schedules(str(_template_path))
+else:
+    # Fallback to empty schedules if template not found
+    SCHEDULES = {}
 
 st.set_page_config(
     page_title="Easy AALM - Lead Exposure Model",
@@ -82,11 +105,8 @@ with col1:
     water_scale_factor = water_scale_pct / 100.0
 
     with st.expander("Schedule"):
-        # Excel defaults
-        intake_ages_days = [0, 91.25, 365, 3650, 5475, 9125, 18250]
-        intake_ages_years = [d/365 for d in intake_ages_days]
-        intake_amt_liters = [0.2, 0.3, 0.35, 0.45, 0.55, 0.7, 1.04]
-        scaled_intake = [amt * water_scale_factor for amt in intake_amt_liters]
+        intake_ages_years = [d/365 for d in SCHEDULES.get('Water_ages', [])]
+        scaled_intake = [amt * water_scale_factor for amt in SCHEDULES.get('Water_amt', [])]
         intake_df = pd.DataFrame({
             'Age (years)': intake_ages_years,
             'Intake (L/day)': scaled_intake
@@ -114,8 +134,8 @@ with col3:
     soil_scale_factor = soil_scale_pct / 100.0
 
     with st.expander("Schedule"):
-        intake_ages_years = [d/365 for d in SOIL_INTAKE_AGES_DAYS]
-        scaled_intake = [amt * soil_scale_factor for amt in SOIL_INTAKE_AMOUNTS]
+        intake_ages_years = [d/365 for d in SCHEDULES.get('Soil_ages', [])]
+        scaled_intake = [amt * soil_scale_factor for amt in SCHEDULES.get('Soil_amt', [])]
         intake_df = pd.DataFrame({
             'Age (years)': intake_ages_years,
             'Intake (g/day)': scaled_intake
@@ -138,11 +158,8 @@ with col4:
     dust_scale_factor = dust_scale_pct / 100.0
 
     with st.expander("Schedule"):
-        # Excel defaults (g/day)
-        intake_ages_days = [0, 91.25, 365, 1825, 3650, 5475]
-        intake_ages_years = [d/365 for d in intake_ages_days]
-        intake_amt_grams = [0.022, 0.039, 0.05, 0.044, 0.033, 0.017]
-        scaled_intake = [amt * dust_scale_factor for amt in intake_amt_grams]
+        intake_ages_years = [d/365 for d in SCHEDULES.get('Dust_ages', [])]
+        scaled_intake = [amt * dust_scale_factor for amt in SCHEDULES.get('Dust_amt', [])]
         intake_df = pd.DataFrame({
             'Age (years)': intake_ages_years,
             'Intake (g/day)': scaled_intake
@@ -165,9 +182,8 @@ with col5:
     air_scale_factor = air_scale_pct / 100.0
 
     with st.expander("Schedule"):
-        intake_ages_years = [0, 1, 2, 3, 6, 11, 16, 21, 31, 51, 61, 71, 81]
-        intake_amt_m3 = [5.4, 8, 8.9, 10.1, 12, 15.2, 16.3, 15.7, 16, 15.7, 14.2, 12.9, 12.2]
-        scaled_intake = [amt * air_scale_factor for amt in intake_amt_m3]
+        intake_ages_years = [d/365 for d in SCHEDULES.get('Air_ages', [])]
+        scaled_intake = [amt * air_scale_factor for amt in SCHEDULES.get('Air_amt', [])]
         intake_df = pd.DataFrame({
             'Age (years)': intake_ages_years,
             'Intake (m³/day)': scaled_intake
@@ -191,7 +207,7 @@ if run_button:
     with st.spinner("Running AALM simulation..."):
         try:
             # Find AALM executable - check bundled locations only
-            script_dir = Path(__file__).parent
+            script_dir = Path(__file__).resolve().parent
 
             # If running from src/ subdirectory, use parent directory
             if script_dir.name == "src":
