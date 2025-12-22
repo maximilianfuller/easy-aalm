@@ -13,6 +13,9 @@ import platform
 from pathlib import Path
 from multiprocessing import freeze_support
 
+# Enable file downloads in pywebview
+webview.settings['ALLOW_DOWNLOADS'] = True
+
 # Windows: flags to hide console windows from subprocesses
 if platform.system() == 'Windows':
     SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW

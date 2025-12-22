@@ -12,6 +12,7 @@ OutputDir=..
 OutputBaseFilename=Easy-AALM-Windows-Setup
 Compression=lzma2
 SolidCompression=yes
+SetupIconFile=..\assets\icon.ico
 UninstallDisplayIcon={app}\Easy AALM.exe
 WizardStyle=modern
 DisableProgramGroupPage=yes

@@ -100,7 +100,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # Add icon path here: 'assets/icon.ico'
+    icon=str(PROJECT_ROOT / 'assets' / 'icon.ico'),
 )
 
 coll = COLLECT(
