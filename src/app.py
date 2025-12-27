@@ -26,34 +26,40 @@ else:
 
 
 @st.cache_data
-def parse_golden_file_schedules(template_path: str) -> dict:
-    """Parse intake schedules from the golden template file."""
-    schedules = {}
+def parse_golden_file(template_path: str) -> dict:
+    """Parse intake schedules and RBA values from the golden template file."""
+    data = {'schedules': {}, 'rba': {}}
     with open(template_path, 'r') as f:
         for line in f:
             parts = line.strip().split(',')
             if len(parts) < 4:
                 continue
-            source = parts[0]  # Water, Soil, Dust, Air
-            param = parts[1]   # intake_ages, intake_amt
+            source = parts[0]  # Water, Soil, Dust, Air, Food
+            param = parts[1]   # intake_ages, intake_amt, RBA
             count = int(parts[2]) if parts[2].isdigit() else 0
 
             if param == 'intake_ages':
                 values = [float(x) for x in parts[3:3+count] if x]
-                schedules[f'{source}_ages'] = values
+                data['schedules'][f'{source}_ages'] = values
             elif param == 'intake_amt':
                 values = [float(x) for x in parts[3:3+count] if x]
-                schedules[f'{source}_amt'] = values
-    return schedules
+                data['schedules'][f'{source}_amt'] = values
+            elif param == 'RBA':
+                # RBA is a single value
+                data['rba'][source] = float(parts[3])
+    return data
 
 
-# Get template path and parse schedules
+# Get template path and parse schedules and RBA values
 _template_path = Path(__file__).resolve().parent / "templates" / "LeggettInput_Golden.txt"
 if _template_path.exists():
-    SCHEDULES = parse_golden_file_schedules(str(_template_path))
+    _golden_data = parse_golden_file(str(_template_path))
+    SCHEDULES = _golden_data['schedules']
+    RBA = _golden_data['rba']
 else:
-    # Fallback to empty schedules if template not found
+    # Fallback to empty data if template not found
     SCHEDULES = {}
+    RBA = {}
 
 st.set_page_config(
     page_title="Easy AALM - Lead Exposure Model",
@@ -110,11 +116,13 @@ with col1:
             'Intake (L/day)': scaled_intake
         })
         st.dataframe(intake_df, width='stretch', hide_index=True)
+        st.caption(f"RBA: {RBA.get('Water', 1.0)}")
 
 # FOOD column
 with col2:
     st.markdown("**Food**")
     food_ug_day = st.number_input("Amount (μg/day)", min_value=0.0, max_value=1000.0, value=10.0, step=0.1, key="food_amt")
+    st.caption(f"RBA: {RBA.get('Food', 1.0)}")
 
 # SOIL column
 with col3:
@@ -139,6 +147,7 @@ with col3:
             'Intake (g/day)': scaled_intake
         })
         st.dataframe(intake_df, width='stretch', hide_index=True)
+        st.caption(f"RBA: {RBA.get('Soil', 0.6)}")
 
 # DUST column
 with col4:
@@ -163,6 +172,7 @@ with col4:
             'Intake (g/day)': scaled_intake
         })
         st.dataframe(intake_df, width='stretch', hide_index=True)
+        st.caption(f"RBA: {RBA.get('Dust', 0.6)}")
 
 # AIR column
 with col5:
@@ -187,6 +197,7 @@ with col5:
             'Intake (m³/day)': scaled_intake
         })
         st.dataframe(intake_df, width='stretch', hide_index=True)
+        st.caption(f"RBA: {RBA.get('Air', 1.0)}")
 
 # Run button - centered and prominent
 st.markdown("---")

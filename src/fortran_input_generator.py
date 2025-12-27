@@ -5,21 +5,12 @@ Shared module for generating AALM Fortran input files.
 This module provides the core input generation logic used by both:
 - app.py (Streamlit web interface)
 - generate_default_input.py (standalone test script)
+
+All intake schedules and RBA values are read directly from the golden template file.
 """
 
 from pathlib import Path
 from typing import List, Tuple, Optional
-from aalm_constants import (
-    WATER_INTAKE_AMOUNTS,
-    SOIL_INTAKE_AMOUNTS,
-    DUST_INTAKE_AMOUNTS,
-    AIR_INTAKE_AMOUNTS,
-    RBA_WATER,
-    RBA_AIR,
-    RBA_FOOD,
-    RBA_SOIL,
-    RBA_DUST,
-)
 
 
 def format_number(value: float) -> str:
@@ -149,12 +140,13 @@ def generate_fortran_input(
             parts[3] = format_number(water_ug_l)
             modified_lines.append(','.join(parts) + '\n')
 
-        # Modify water intake amounts (apply scale factor)
+        # Modify water intake amounts (apply scale factor to template values)
         elif len(parts) > 1 and parts[0] == 'Water' and parts[1] == 'intake_amt':
             num_vals = int(parts[2])
             for i in range(num_vals):
-                if len(parts) > 3 + i and i < len(WATER_INTAKE_AMOUNTS):
-                    parts[3 + i] = format_number(WATER_INTAKE_AMOUNTS[i] * water_scale_factor)
+                if len(parts) > 3 + i and parts[3 + i]:
+                    original_value = float(parts[3 + i])
+                    parts[3 + i] = format_number(original_value * water_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify soil concentration
@@ -162,17 +154,13 @@ def generate_fortran_input(
             parts[3] = format_number(soil_ppm)
             modified_lines.append(','.join(parts) + '\n')
 
-        # Modify soil intake amounts (apply scale factor)
+        # Modify soil intake amounts (apply scale factor to template values)
         elif len(parts) > 1 and parts[0] == 'Soil' and parts[1] == 'intake_amt':
             num_vals = int(parts[2])
             for i in range(num_vals):
-                if len(parts) > 3 + i and i < len(SOIL_INTAKE_AMOUNTS):
-                    parts[3 + i] = format_number(SOIL_INTAKE_AMOUNTS[i] * soil_scale_factor)
-            modified_lines.append(','.join(parts) + '\n')
-
-        # Modify soil RBA (Relative Bioavailability)
-        elif len(parts) > 1 and parts[0] == 'Soil' and parts[1] == 'RBA':
-            parts[3] = "0.6"  # Soil has 60% bioavailability
+                if len(parts) > 3 + i and parts[3 + i]:
+                    original_value = float(parts[3 + i])
+                    parts[3 + i] = format_number(original_value * soil_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify dust concentration
@@ -180,12 +168,13 @@ def generate_fortran_input(
             parts[3] = format_number(dust_ppm)
             modified_lines.append(','.join(parts) + '\n')
 
-        # Modify dust intake amounts (apply scale factor)
+        # Modify dust intake amounts (apply scale factor to template values)
         elif len(parts) > 1 and parts[0] == 'Dust' and parts[1] == 'intake_amt':
             num_vals = int(parts[2])
             for i in range(num_vals):
-                if len(parts) > 3 + i and i < len(DUST_INTAKE_AMOUNTS):
-                    parts[3 + i] = format_number(DUST_INTAKE_AMOUNTS[i] * dust_scale_factor)
+                if len(parts) > 3 + i and parts[3 + i]:
+                    original_value = float(parts[3 + i])
+                    parts[3 + i] = format_number(original_value * dust_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify air concentration
@@ -193,26 +182,16 @@ def generate_fortran_input(
             parts[3] = format_number(air_ug_m3)
             modified_lines.append(','.join(parts) + '\n')
 
-        # Modify air intake amounts (apply scale factor)
+        # Modify air intake amounts (apply scale factor to template values)
         elif len(parts) > 1 and parts[0] == 'Air' and parts[1] == 'intake_amt':
             num_vals = int(parts[2])
             for i in range(num_vals):
-                if len(parts) > 3 + i and i < len(AIR_INTAKE_AMOUNTS):
-                    parts[3 + i] = format_number(AIR_INTAKE_AMOUNTS[i] * air_scale_factor)
+                if len(parts) > 3 + i and parts[3 + i]:
+                    original_value = float(parts[3 + i])
+                    parts[3 + i] = format_number(original_value * air_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
-        # Set RBA values for all sources
-        elif len(parts) > 1 and parts[1] == 'RBA':
-            if parts[0] == 'Water':
-                parts[3] = format_number(RBA_WATER)
-            elif parts[0] == 'Air':
-                parts[3] = format_number(RBA_AIR)
-            elif parts[0] == 'Food':
-                parts[3] = format_number(RBA_FOOD)
-            elif parts[0] == 'Dust':
-                parts[3] = format_number(RBA_DUST)
-            modified_lines.append(','.join(parts) + '\n')
-
+        # All other lines (including RBA) - keep as-is from template
         else:
             modified_lines.append(line)
 
