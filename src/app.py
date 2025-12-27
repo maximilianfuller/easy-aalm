@@ -78,12 +78,10 @@ st.markdown("---")
 
 # All 5 exposure pathways in columns
 st.markdown("### Lead Exposure Sources")
+
 if st.button("Clear All Sources", help="Set all lead concentrations to zero"):
-    st.session_state.water_conc = 0.0
-    st.session_state.food_amt = 0.0
-    st.session_state.soil_conc = 0
-    st.session_state.dust_conc = 0
-    st.session_state.air_conc = 0.0
+    for key in ['water_conc', 'food_amt', 'soil_conc', 'dust_conc', 'air_conc']:
+        st.session_state.pop(key, None)
     st.rerun()
 
 col1, col2, col3, col4, col5 = st.columns(5)
@@ -91,7 +89,7 @@ col1, col2, col3, col4, col5 = st.columns(5)
 # WATER column
 with col1:
     st.markdown("**Water**")
-    water_input = st.number_input("Concentration (PPB)", 0.0, 50000.0, 0.9, 0.1, key="water_conc")
+    water_input = st.number_input("Concentration (PPB)", min_value=0.0, max_value=50000.0, value=0.9, step=0.1, key="water_conc")
     water_ug_l = water_input  # 1 PPB = 1 μg/L
 
     water_scale_pct = st.number_input(
@@ -116,12 +114,12 @@ with col1:
 # FOOD column
 with col2:
     st.markdown("**Food**")
-    food_ug_day = st.number_input("Amount (μg/day)", 0.0, 1000.0, 10.0, 0.1, key="food_amt")
+    food_ug_day = st.number_input("Amount (μg/day)", min_value=0.0, max_value=1000.0, value=10.0, step=0.1, key="food_amt")
 
 # SOIL column
 with col3:
     st.markdown("**Soil**")
-    soil_ppm = st.number_input("Concentration (PPM)", 0, 10000, 652, 10, key="soil_conc")
+    soil_ppm = st.number_input("Concentration (PPM)", min_value=0, max_value=10000, value=652, step=10, key="soil_conc")
 
     soil_scale_pct = st.number_input(
         "Intake Scale (%)",
@@ -145,7 +143,7 @@ with col3:
 # DUST column
 with col4:
     st.markdown("**Dust**")
-    dust_ppm = st.number_input("Concentration (PPM)", 0, 10000, 10, 10, key="dust_conc")
+    dust_ppm = st.number_input("Concentration (PPM)", min_value=0, max_value=10000, value=10, step=10, key="dust_conc")
 
     dust_scale_pct = st.number_input(
         "Intake Scale (%)",
@@ -169,7 +167,7 @@ with col4:
 # AIR column
 with col5:
     st.markdown("**Air**")
-    air_ug_m3 = st.number_input("Concentration (μg/m³)", 0.0, 1000.0, 0.01, 0.01, key="air_conc")
+    air_ug_m3 = st.number_input("Concentration (μg/m³)", min_value=0.0, max_value=1000.0, value=0.01, step=0.01, key="air_conc")
 
     air_scale_pct = st.number_input(
         "Intake Scale (%)",
