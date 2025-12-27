@@ -33,7 +33,7 @@ def generate_fortran_input(
     template_path: Path,
     age_range: Tuple[int, int],
     sex: str,
-    food_ug_day: float,
+    food_scale_factor: float,
     water_ug_l: float,
     water_scale_factor: float,
     soil_ppm: float,
@@ -51,7 +51,7 @@ def generate_fortran_input(
         template_path: Path to template file (should be LeggettInput_Golden.txt)
         age_range: (start_age, end_age) in years
         sex: "Male" or "Female"
-        food_ug_day: Food lead intake (μg/day)
+        food_scale_factor: Scale factor for food intake (1.0 = 100%)
         water_ug_l: Water lead concentration (μg/L)
         water_scale_factor: Scale factor for water intake (1.0 = 100%)
         soil_ppm: Soil lead concentration (PPM)
@@ -126,13 +126,13 @@ def generate_fortran_input(
             parts[3] = '0.46' if sex == "Male" else '0.41'
             modified_lines.append(','.join(parts) + '\n')
 
-        # Modify food intake
+        # Modify food intake amounts (apply scale factor to template values)
         elif len(parts) > 1 and parts[0] == 'Food' and parts[1] == 'source_amt1':
             num_vals = int(parts[2])
-            # Set all values to constant food intake
             for i in range(num_vals):
-                if len(parts) > 3 + i:
-                    parts[3 + i] = format_number(food_ug_day)
+                if len(parts) > 3 + i and parts[3 + i]:
+                    original_value = float(parts[3 + i])
+                    parts[3 + i] = format_number(original_value * food_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify water concentration

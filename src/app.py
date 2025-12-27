@@ -86,7 +86,7 @@ st.markdown("---")
 st.markdown("### Lead Exposure Sources")
 
 if st.button("Clear All Sources", help="Set all lead concentrations to zero"):
-    for key in ['water_conc', 'food_amt', 'soil_conc', 'dust_conc', 'air_conc']:
+    for key in ['water_conc', 'soil_conc', 'dust_conc', 'air_conc']:
         st.session_state.pop(key, None)
     st.rerun()
 
@@ -121,18 +121,26 @@ with col1:
 # FOOD column
 with col2:
     st.markdown("**Food**")
-    food_ug_day = st.number_input("Amount (μg/day)", min_value=0.0, max_value=1000.0, value=10.0, step=0.1, key="food_amt")
 
-    with st.expander("Default Schedule"):
+    food_scale_pct = st.number_input(
+        "Intake Scale (%)",
+        min_value=1.0,
+        max_value=10000.0,
+        value=100.0,
+        step=10.0,
+        key="food_scale"
+    )
+    food_scale_factor = food_scale_pct / 100.0
+
+    with st.expander("Schedule"):
         intake_ages_years = [d/365 for d in SCHEDULES.get('Food_ages', [])]
-        intake_values = SCHEDULES.get('Food_amt', [])
+        scaled_intake = [amt * food_scale_factor for amt in SCHEDULES.get('Food_amt', [])]
         intake_df = pd.DataFrame({
             'Age (years)': intake_ages_years,
-            'Intake (μg/day)': intake_values
+            'Intake (μg/day)': scaled_intake
         })
         st.dataframe(intake_df, width='stretch', hide_index=True)
         st.caption(f"RBA: {RBA.get('Food', 1.0)}")
-        st.caption("Note: Your input above overrides all ages")
 
 # SOIL column
 with col3:
@@ -273,7 +281,7 @@ if run_button:
                     template_path=template_path,
                     age_range=age_range,
                     sex=sex,
-                    food_ug_day=food_ug_day,
+                    food_scale_factor=food_scale_factor,
                     water_ug_l=water_ug_l,
                     water_scale_factor=water_scale_factor,
                     soil_ppm=soil_ppm,
