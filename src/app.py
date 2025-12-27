@@ -123,16 +123,16 @@ with col2:
     st.markdown("**Food**")
     food_ug_day = st.number_input("Amount (μg/day)", min_value=0.0, max_value=1000.0, value=10.0, step=0.1, key="food_amt")
 
-    with st.expander("Schedule"):
+    with st.expander("Default Schedule"):
         intake_ages_years = [d/365 for d in SCHEDULES.get('Food_ages', [])]
-        # Food uses constant user-specified value for all ages
-        intake_values = [food_ug_day] * len(intake_ages_years)
+        intake_values = SCHEDULES.get('Food_amt', [])
         intake_df = pd.DataFrame({
             'Age (years)': intake_ages_years,
             'Intake (μg/day)': intake_values
         })
         st.dataframe(intake_df, width='stretch', hide_index=True)
         st.caption(f"RBA: {RBA.get('Food', 1.0)}")
+        st.caption("Note: Your input above overrides all ages")
 
 # SOIL column
 with col3:
