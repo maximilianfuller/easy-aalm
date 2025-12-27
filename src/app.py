@@ -38,10 +38,10 @@ def parse_golden_file(template_path: str) -> dict:
             param = parts[1]   # intake_ages, intake_amt, RBA
             count = int(parts[2]) if parts[2].isdigit() else 0
 
-            if param == 'intake_ages':
+            if param in ('intake_ages', 'source_ages'):
                 values = [float(x) for x in parts[3:3+count] if x]
                 data['schedules'][f'{source}_ages'] = values
-            elif param == 'intake_amt':
+            elif param in ('intake_amt', 'source_amt1'):
                 values = [float(x) for x in parts[3:3+count] if x]
                 data['schedules'][f'{source}_amt'] = values
             elif param == 'RBA':
@@ -122,7 +122,17 @@ with col1:
 with col2:
     st.markdown("**Food**")
     food_ug_day = st.number_input("Amount (μg/day)", min_value=0.0, max_value=1000.0, value=10.0, step=0.1, key="food_amt")
-    st.caption(f"RBA: {RBA.get('Food', 1.0)}")
+
+    with st.expander("Schedule"):
+        intake_ages_years = [d/365 for d in SCHEDULES.get('Food_ages', [])]
+        # Food uses constant user-specified value for all ages
+        intake_values = [food_ug_day] * len(intake_ages_years)
+        intake_df = pd.DataFrame({
+            'Age (years)': intake_ages_years,
+            'Intake (μg/day)': intake_values
+        })
+        st.dataframe(intake_df, width='stretch', hide_index=True)
+        st.caption(f"RBA: {RBA.get('Food', 1.0)}")
 
 # SOIL column
 with col3:
