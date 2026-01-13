@@ -149,13 +149,13 @@ st.markdown("---")
 # All 5 exposure pathways in columns
 st.markdown("### Lead Exposure Sources")
 
-# Default values from golden file
+# Default values from golden file (no hardcoded fallbacks)
 DEFAULTS = {
-    'water_conc': CONC.get('Water', 0.9), 'water_scale': 100.0, 'water_rba': RBA.get('Water', 1.0),
-    'food_scale': 100.0, 'food_rba': RBA.get('Food', 1.0),
-    'soil_conc': CONC.get('Soil', 200), 'soil_scale': 100.0, 'soil_rba': RBA.get('Soil', 0.6),
-    'dust_conc': CONC.get('Dust', 150), 'dust_scale': 100.0, 'dust_rba': RBA.get('Dust', 0.6),
-    'air_conc': CONC.get('Air', 0.1), 'air_scale': 100.0, 'air_rba': RBA.get('Air', 1.0),
+    'water_conc': CONC['Water'], 'water_scale': 100.0, 'water_rba': RBA['Water'],
+    'food_scale': 100.0, 'food_rba': RBA['Food'],
+    'soil_conc': CONC['Soil'], 'soil_scale': 100.0, 'soil_rba': RBA['Soil'],
+    'dust_conc': CONC['Dust'], 'dust_scale': 100.0, 'dust_rba': RBA['Dust'],
+    'air_conc': CONC['Air'], 'air_scale': 100.0, 'air_rba': RBA['Air'],
 }
 
 # Persistent state store (survives widget removal)
@@ -222,18 +222,18 @@ for key, val in st.session_state.media.items():
 MEDIA_CONFIG = {
     'Water': {'ages_key': 'Water_ages', 'amt_key': 'Water_amt', 'amt_label': 'Intake (L/day)',
               'conc_label': 'Concentration (PPB)', 'conc_key': 'water_conc', 'scale_key': 'water_scale',
-              'conc_min': 0.0, 'conc_max': 50000.0, 'conc_step': 0.1, 'rba_default': 1.0},
+              'conc_min': 0.0, 'conc_max': 50000.0, 'conc_step': 0.1},
     'Food': {'ages_key': 'Food_ages', 'amt_key': 'Food_amt', 'amt_label': 'Intake (μg/day)',
-             'conc_label': None, 'conc_key': None, 'scale_key': 'food_scale', 'rba_default': 1.0},
+             'conc_label': None, 'conc_key': None, 'scale_key': 'food_scale'},
     'Soil': {'ages_key': 'Soil_ages', 'amt_key': 'Soil_amt', 'amt_label': 'Intake (g/day)',
              'conc_label': 'Concentration (PPM)', 'conc_key': 'soil_conc', 'scale_key': 'soil_scale',
-             'conc_min': 0, 'conc_max': 10000, 'conc_step': 10, 'rba_default': 0.6},
+             'conc_min': 0, 'conc_max': 10000, 'conc_step': 10},
     'Dust': {'ages_key': 'Dust_ages', 'amt_key': 'Dust_amt', 'amt_label': 'Intake (g/day)',
              'conc_label': 'Concentration (PPM)', 'conc_key': 'dust_conc', 'scale_key': 'dust_scale',
-             'conc_min': 0, 'conc_max': 10000, 'conc_step': 10, 'rba_default': 0.6},
+             'conc_min': 0, 'conc_max': 10000, 'conc_step': 10},
     'Air': {'ages_key': 'Air_ages', 'amt_key': 'Air_amt', 'amt_label': 'Intake (m³/day)',
             'conc_label': 'Concentration (μg/m³)', 'conc_key': 'air_conc', 'scale_key': 'air_scale',
-            'conc_min': 0.0, 'conc_max': 1000.0, 'conc_step': 0.01, 'rba_default': 1.0},
+            'conc_min': 0.0, 'conc_max': 1000.0, 'conc_step': 0.01},
 }
 
 for i, media in enumerate(show_media):
@@ -246,7 +246,7 @@ for i, media in enumerate(show_media):
         st.number_input("Intake Scale (%)", min_value=0.0, max_value=10000.0, step=10.0, key=cfg['scale_key'])
         with st.expander("Schedule"):
             render_editable_schedule(media, cfg['ages_key'], cfg['amt_key'], cfg['amt_label'])
-            st.number_input("RBA", min_value=0.0, max_value=1.0, step=0.1, key=f'{media.lower()}_rba')
+            st.number_input("RBA", min_value=0.0, step=0.1, key=f'{media.lower()}_rba')
 
 # Sync widget values back to persistent state
 for key in st.session_state.media:
@@ -324,6 +324,15 @@ if run_button:
                     st.error(f"Template file not found at {template_path}")
                     st.stop()
 
+                # Get custom RBA values from session state (defaults from golden file)
+                custom_rba = {
+                    'Water': st.session_state.media['water_rba'],
+                    'Food': st.session_state.media['food_rba'],
+                    'Soil': st.session_state.media['soil_rba'],
+                    'Dust': st.session_state.media['dust_rba'],
+                    'Air': st.session_state.media['air_rba'],
+                }
+
                 modified_lines = generate_fortran_input(
                     template_path=template_path,
                     age_range=age_range,
@@ -338,6 +347,7 @@ if run_button:
                     air_scale_factor=air_scale_factor,
                     food_scale_factor=food_scale_factor,
                     custom_schedules=st.session_state.get('custom_schedules'),
+                    custom_rba=custom_rba,
                     sim_name='WebSim'
                 )
                 profiling_times['input_generation'] = time.time() - start_time

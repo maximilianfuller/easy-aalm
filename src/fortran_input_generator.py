@@ -55,6 +55,7 @@ def generate_fortran_input(
     air_scale_factor: float,
     food_scale_factor: float,
     custom_schedules: Optional[Dict[str, Optional[pd.DataFrame]]] = None,
+    custom_rba: Optional[Dict[str, float]] = None,
     sim_name: Optional[str] = None
 ) -> List[str]:
     """
@@ -308,7 +309,14 @@ def generate_fortran_input(
                         parts[3 + i] = format_number(original_value * air_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
-        # All other lines (including RBA) - keep as-is from template
+        # Modify RBA values if custom values provided
+        elif len(parts) > 1 and parts[1] == 'RBA' and custom_rba:
+            source = parts[0]
+            if source in custom_rba:
+                parts[3] = format_number(custom_rba[source])
+            modified_lines.append(','.join(parts) + '\n')
+
+        # All other lines - keep as-is from template
         else:
             modified_lines.append(line)
 
