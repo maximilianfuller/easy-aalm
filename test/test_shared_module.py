@@ -31,14 +31,16 @@ def main():
     age_range = (0, 90)
     sex = "Male"
     water_ppb = 0.9
-    water_scale_factor = 1.0
-    food_ug_day = 10.0
     soil_ppm = 25
-    soil_scale_factor = 1.0
     dust_ppm = 175
-    dust_scale_factor = 1.0
     air_ug_m3 = 0.01
+
+    # Scale factors (1.0 = 100% = default)
+    water_scale_factor = 1.0
+    soil_scale_factor = 1.0
+    dust_scale_factor = 1.0
     air_scale_factor = 1.0
+    food_scale_factor = 1.0
 
     water_ug_l = water_ppb  # PPB = μg/L
 
@@ -48,14 +50,13 @@ def main():
         print(f"❌ FAILURE: Template file not found: {template_path}")
         return 1
 
-    # Generate input using shared module
+    # Generate input using shared module (no custom schedules = use template defaults)
     print("Generating Fortran input with default parameters...")
     try:
         modified_lines = generate_fortran_input(
             template_path=template_path,
             age_range=age_range,
             sex=sex,
-            food_ug_day=food_ug_day,
             water_ug_l=water_ug_l,
             water_scale_factor=water_scale_factor,
             soil_ppm=soil_ppm,
@@ -64,6 +65,7 @@ def main():
             dust_scale_factor=dust_scale_factor,
             air_ug_m3=air_ug_m3,
             air_scale_factor=air_scale_factor,
+            food_scale_factor=food_scale_factor,
             sim_name=None  # Keep template name (SimName)
         )
     except Exception as e:

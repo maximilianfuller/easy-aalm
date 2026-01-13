@@ -13,6 +13,7 @@ import platform
 from pathlib import Path
 import tempfile
 import shutil
+from typing import Optional, Dict
 
 # Windows: flags to hide console windows from subprocesses
 if platform.system() == 'Windows':
@@ -27,39 +28,98 @@ else:
 
 @st.cache_data
 def parse_golden_file(template_path: str) -> dict:
-    """Parse intake schedules and RBA values from the golden template file."""
-    data = {'schedules': {}, 'rba': {}}
+    """Parse intake schedules, RBA values, and age range from the golden template file."""
+    data = {'schedules': {}, 'rba': {}, 'age_range': (0, 90)}
     with open(template_path, 'r') as f:
         for line in f:
             parts = line.strip().split(',')
             if len(parts) < 4:
                 continue
-            source = parts[0]  # Water, Soil, Dust, Air, Food
-            param = parts[1]   # intake_ages, intake_amt, RBA
-            count = int(parts[2]) if parts[2].isdigit() else 0
+            source = parts[0]  # Sim, Water, Soil, Dust, Air, Food
+            param = parts[1]   # age_range, intake_ages, intake_amt, RBA
 
-            if param in ('intake_ages', 'source_ages'):
+            if source == 'Sim' and param == 'age_range':
+                start_days = int(parts[3])
+                end_days = int(parts[4])
+                data['age_range'] = (start_days // 365, end_days // 365)
+            elif param in ('intake_ages', 'source_ages'):
+                count = int(parts[2]) if parts[2].isdigit() else 0
                 values = [float(x) for x in parts[3:3+count] if x]
                 data['schedules'][f'{source}_ages'] = values
             elif param in ('intake_amt', 'source_amt1'):
+                count = int(parts[2]) if parts[2].isdigit() else 0
                 values = [float(x) for x in parts[3:3+count] if x]
                 data['schedules'][f'{source}_amt'] = values
             elif param == 'RBA':
-                # RBA is a single value
                 data['rba'][source] = float(parts[3])
     return data
 
 
 # Get template path and parse schedules and RBA values
-_template_path = Path(__file__).resolve().parent / "templates" / "LeggettInput_Golden.txt"
+_template_path = Path("/mnt/c/Users/maxim/Downloads/LeggettInput.txt")
 if _template_path.exists():
     _golden_data = parse_golden_file(str(_template_path))
     SCHEDULES = _golden_data['schedules']
     RBA = _golden_data['rba']
+    DEFAULT_AGE_RANGE = _golden_data['age_range']
 else:
     # Fallback to empty data if template not found
     SCHEDULES = {}
+    DEFAULT_AGE_RANGE = (0, 7)
     RBA = {}
+
+
+def render_editable_schedule(source: str, ages_key: str, amt_key: str,
+                             amt_label: str) -> Optional[pd.DataFrame]:
+    """
+    Render an editable schedule with add/delete rows and multiply controls.
+    Returns the current schedule DataFrame (custom or default).
+    """
+    # Initialize session state if needed
+    if 'custom_schedules' not in st.session_state:
+        st.session_state.custom_schedules = {
+            'Water': None, 'Food': None, 'Soil': None, 'Dust': None, 'Air': None
+        }
+
+    # Get current schedule
+    if st.session_state.custom_schedules[source] is not None:
+        df = st.session_state.custom_schedules[source].copy()
+        df = df.reset_index(drop=True)
+    else:
+        ages_years = [d / 365 for d in SCHEDULES.get(ages_key, [])]
+        amounts = SCHEDULES.get(amt_key, [])
+        df = pd.DataFrame({'Age (years)': ages_years, amt_label: amounts})
+
+    # Editable data table with dynamic rows
+    edited_df = st.data_editor(
+        df,
+        num_rows="dynamic",
+        hide_index=True,
+        column_config={
+            "Age (years)": st.column_config.NumberColumn(
+                "Age\n(years)",
+                width="small",
+                min_value=0,
+                max_value=100,
+                step=1,
+            ),
+            amt_label: st.column_config.NumberColumn(
+                amt_label.replace(" (", "\n("),
+                width="small",
+                min_value=0.0,
+            ),
+        },
+    )
+
+    if st.button("Reset", key=f"{source}_reset"):
+        st.session_state.custom_schedules[source] = None
+        st.rerun()
+
+    # Store edits
+    st.session_state.custom_schedules[source] = edited_df
+
+    return edited_df
+
 
 st.set_page_config(
     page_title="Easy AALM - Lead Exposure Model",
@@ -68,7 +128,7 @@ st.set_page_config(
 
 
 st.title("Easy AALM - Lead Exposure Calculator")
-st.markdown("Simple tool to estimate Blood Lead Levels from environmental measurements | Uses code from the [EPA AALM Model](https://www.epa.gov/superfund/lead-all-ages-lead-model-aalm)")
+st.markdown("Simple tool to estimate Blood Lead Levels from environmental measurements | Uses code from the [EPA AALM Model](https://cfpub.epa.gov/si/si_public_record_Report.cfm?dirEntryId=363030&Lab=CPHEA)")
 
 st.markdown("---")
 
@@ -76,7 +136,7 @@ st.markdown("---")
 st.markdown("### Demographics")
 col1, spacer, col2 = st.columns([1, 0.2, 1])
 with col1:
-    age_range = st.slider("Age Range (years)", 0, 90, (0, 90), help="Simulation from birth to specified age")
+    age_range = st.slider("Age Range (years)", 0, 90, DEFAULT_AGE_RANGE, help="Simulation from birth to specified age")
 with col2:
     sex = st.radio("Sex", ["Female", "Male"], horizontal=True)
 
@@ -85,137 +145,120 @@ st.markdown("---")
 # All 5 exposure pathways in columns
 st.markdown("### Lead Exposure Sources")
 
-if st.button("Clear All Sources", help="Set all lead concentrations to zero"):
+# Default values
+DEFAULTS = {
+    'water_conc': 0.9, 'water_scale': 100.0, 'water_rba': RBA.get('Water', 1.0),
+    'food_scale': 100.0, 'food_rba': RBA.get('Food', 1.0),
+    'soil_conc': 652, 'soil_scale': 100.0, 'soil_rba': RBA.get('Soil', 0.6),
+    'dust_conc': 10, 'dust_scale': 100.0, 'dust_rba': RBA.get('Dust', 0.6),
+    'air_conc': 0.01, 'air_scale': 100.0, 'air_rba': RBA.get('Air', 1.0),
+}
+
+# Persistent state store (survives widget removal)
+if 'media' not in st.session_state or set(st.session_state.media.keys()) != set(DEFAULTS.keys()):
+    st.session_state.media = DEFAULTS.copy()
+
+def set_value(key, val):
+    """Set value in both persistent store and widget key."""
+    st.session_state.media[key] = val
+    st.session_state[key] = val
+
+def clear_all():
+    """Clear all sources: concentrations to 0, scales to 100% (food to 0%)."""
     for key in ['water_conc', 'soil_conc', 'dust_conc', 'air_conc']:
-        st.session_state.pop(key, None)
+        set_value(key, 0.0)
+    for key in ['water_scale', 'soil_scale', 'dust_scale', 'air_scale']:
+        set_value(key, 100.0)
+    set_value('food_scale', 0.0)  # Food has no concentration, so zero the scale
+
+def clear_except(keep_media):
+    """Clear all media except the specified one."""
+    conc_keys = {'Water': 'water_conc', 'Soil': 'soil_conc', 'Dust': 'dust_conc', 'Air': 'air_conc'}
+    scale_keys = {'Water': 'water_scale', 'Food': 'food_scale', 'Soil': 'soil_scale',
+                  'Dust': 'dust_scale', 'Air': 'air_scale'}
+    for media in ['Water', 'Food', 'Soil', 'Dust', 'Air']:
+        if media != keep_media:
+            if media in conc_keys:
+                set_value(conc_keys[media], 0.0)
+                set_value(scale_keys[media], 100.0)
+            else:  # Food - no concentration, so zero the scale
+                set_value(scale_keys[media], 0.0)
+            if st.session_state.get('custom_schedules', {}).get(media) is not None:
+                st.session_state.custom_schedules[media] = None
+
+def on_filter_change():
+    selected = st.session_state.get('media_filter_ctrl', 'All') or 'All'
+    if selected != 'All':
+        clear_except(selected)
+
+if st.button("Clear All Sources", help="Set all lead concentrations to zero and intake scales to 100%"):
+    clear_all()
     st.rerun()
 
-col1, col2, col3, col4, col5 = st.columns(5)
+st.segmented_control(
+    "Show media",
+    ['All', 'Water', 'Food', 'Soil', 'Dust', 'Air'],
+    default='All',
+    key='media_filter_ctrl',
+    on_change=on_filter_change,
+    label_visibility="collapsed"
+)
 
-# WATER column
-with col1:
-    st.markdown("**Water**")
-    water_input = st.number_input("Concentration (PPB)", min_value=0.0, max_value=50000.0, value=0.9, step=0.1, key="water_conc")
-    water_ug_l = water_input  # 1 PPB = 1 μg/L
+# Determine which columns to show
+media_filter = st.session_state.get('media_filter_ctrl', 'All') or 'All'
+show_media = ['Water', 'Food', 'Soil', 'Dust', 'Air'] if media_filter == 'All' else [media_filter]
+columns = st.columns(len(show_media))
 
-    water_scale_pct = st.number_input(
-        "Intake Scale (%)",
-        min_value=1.0,
-        max_value=10000.0,
-        value=100.0,
-        step=10.0,
-        key="water_scale"
-    )
-    water_scale_factor = water_scale_pct / 100.0
+# Restore hidden widget values from persistent store (only if not already set)
+for key, val in st.session_state.media.items():
+    if key not in st.session_state:
+        st.session_state[key] = val
 
-    with st.expander("Schedule"):
-        intake_ages_years = [d/365 for d in SCHEDULES.get('Water_ages', [])]
-        scaled_intake = [amt * water_scale_factor for amt in SCHEDULES.get('Water_amt', [])]
-        intake_df = pd.DataFrame({
-            'Age (years)': intake_ages_years,
-            'Intake (L/day)': scaled_intake
-        })
-        st.dataframe(intake_df, width='stretch', hide_index=True)
-        st.caption(f"RBA: {RBA.get('Water', 1.0)}")
+# Media configuration
+MEDIA_CONFIG = {
+    'Water': {'ages_key': 'Water_ages', 'amt_key': 'Water_amt', 'amt_label': 'Intake (L/day)',
+              'conc_label': 'Concentration (PPB)', 'conc_key': 'water_conc', 'scale_key': 'water_scale',
+              'conc_min': 0.0, 'conc_max': 50000.0, 'conc_step': 0.1, 'rba_default': 1.0},
+    'Food': {'ages_key': 'Food_ages', 'amt_key': 'Food_amt', 'amt_label': 'Intake (μg/day)',
+             'conc_label': None, 'conc_key': None, 'scale_key': 'food_scale', 'rba_default': 1.0},
+    'Soil': {'ages_key': 'Soil_ages', 'amt_key': 'Soil_amt', 'amt_label': 'Intake (g/day)',
+             'conc_label': 'Concentration (PPM)', 'conc_key': 'soil_conc', 'scale_key': 'soil_scale',
+             'conc_min': 0, 'conc_max': 10000, 'conc_step': 10, 'rba_default': 0.6},
+    'Dust': {'ages_key': 'Dust_ages', 'amt_key': 'Dust_amt', 'amt_label': 'Intake (g/day)',
+             'conc_label': 'Concentration (PPM)', 'conc_key': 'dust_conc', 'scale_key': 'dust_scale',
+             'conc_min': 0, 'conc_max': 10000, 'conc_step': 10, 'rba_default': 0.6},
+    'Air': {'ages_key': 'Air_ages', 'amt_key': 'Air_amt', 'amt_label': 'Intake (m³/day)',
+            'conc_label': 'Concentration (μg/m³)', 'conc_key': 'air_conc', 'scale_key': 'air_scale',
+            'conc_min': 0.0, 'conc_max': 1000.0, 'conc_step': 0.01, 'rba_default': 1.0},
+}
 
-# FOOD column
-with col2:
-    st.markdown("**Food**")
+for i, media in enumerate(show_media):
+    cfg = MEDIA_CONFIG[media]
+    with columns[i]:
+        st.markdown(f"**{media}**")
+        if cfg['conc_label']:
+            st.number_input(cfg['conc_label'], min_value=cfg['conc_min'], max_value=cfg['conc_max'],
+                            step=cfg['conc_step'], key=cfg['conc_key'])
+        st.number_input("Intake Scale (%)", min_value=0.0, max_value=10000.0, step=10.0, key=cfg['scale_key'])
+        with st.expander("Schedule"):
+            render_editable_schedule(media, cfg['ages_key'], cfg['amt_key'], cfg['amt_label'])
+            st.number_input("RBA", min_value=0.0, max_value=1.0, step=0.1, key=f'{media.lower()}_rba')
 
-    food_scale_pct = st.number_input(
-        "Intake Scale (%)",
-        min_value=1.0,
-        max_value=10000.0,
-        value=100.0,
-        step=10.0,
-        key="food_scale"
-    )
-    food_scale_factor = food_scale_pct / 100.0
+# Sync widget values back to persistent state
+for key in st.session_state.media:
+    if key in st.session_state:
+        st.session_state.media[key] = st.session_state[key]
 
-    with st.expander("Schedule"):
-        intake_ages_years = [d/365 for d in SCHEDULES.get('Food_ages', [])]
-        scaled_intake = [amt * food_scale_factor for amt in SCHEDULES.get('Food_amt', [])]
-        intake_df = pd.DataFrame({
-            'Age (years)': intake_ages_years,
-            'Intake (μg/day)': scaled_intake
-        })
-        st.dataframe(intake_df, width='stretch', hide_index=True)
-        st.caption(f"RBA: {RBA.get('Food', 1.0)}")
-
-# SOIL column
-with col3:
-    st.markdown("**Soil**")
-    soil_ppm = st.number_input("Concentration (PPM)", min_value=0, max_value=10000, value=652, step=10, key="soil_conc")
-
-    soil_scale_pct = st.number_input(
-        "Intake Scale (%)",
-        min_value=1.0,
-        max_value=10000.0,
-        value=100.0,
-        step=10.0,
-        key="soil_scale"
-    )
-    soil_scale_factor = soil_scale_pct / 100.0
-
-    with st.expander("Schedule"):
-        intake_ages_years = [d/365 for d in SCHEDULES.get('Soil_ages', [])]
-        scaled_intake = [amt * soil_scale_factor for amt in SCHEDULES.get('Soil_amt', [])]
-        intake_df = pd.DataFrame({
-            'Age (years)': intake_ages_years,
-            'Intake (g/day)': scaled_intake
-        })
-        st.dataframe(intake_df, width='stretch', hide_index=True)
-        st.caption(f"RBA: {RBA.get('Soil', 0.6)}")
-
-# DUST column
-with col4:
-    st.markdown("**Dust**")
-    dust_ppm = st.number_input("Concentration (PPM)", min_value=0, max_value=10000, value=10, step=10, key="dust_conc")
-
-    dust_scale_pct = st.number_input(
-        "Intake Scale (%)",
-        min_value=1.0,
-        max_value=10000.0,
-        value=100.0,
-        step=10.0,
-        key="dust_scale"
-    )
-    dust_scale_factor = dust_scale_pct / 100.0
-
-    with st.expander("Schedule"):
-        intake_ages_years = [d/365 for d in SCHEDULES.get('Dust_ages', [])]
-        scaled_intake = [amt * dust_scale_factor for amt in SCHEDULES.get('Dust_amt', [])]
-        intake_df = pd.DataFrame({
-            'Age (years)': intake_ages_years,
-            'Intake (g/day)': scaled_intake
-        })
-        st.dataframe(intake_df, width='stretch', hide_index=True)
-        st.caption(f"RBA: {RBA.get('Dust', 0.6)}")
-
-# AIR column
-with col5:
-    st.markdown("**Air**")
-    air_ug_m3 = st.number_input("Concentration (μg/m³)", min_value=0.0, max_value=1000.0, value=0.01, step=0.01, key="air_conc")
-
-    air_scale_pct = st.number_input(
-        "Intake Scale (%)",
-        min_value=1.0,
-        max_value=10000.0,
-        value=100.0,
-        step=10.0,
-        key="air_scale"
-    )
-    air_scale_factor = air_scale_pct / 100.0
-
-    with st.expander("Schedule"):
-        intake_ages_years = [d/365 for d in SCHEDULES.get('Air_ages', [])]
-        scaled_intake = [amt * air_scale_factor for amt in SCHEDULES.get('Air_amt', [])]
-        intake_df = pd.DataFrame({
-            'Age (years)': intake_ages_years,
-            'Intake (m³/day)': scaled_intake
-        })
-        st.dataframe(intake_df, width='stretch', hide_index=True)
-        st.caption(f"RBA: {RBA.get('Air', 1.0)}")
+# Get values from persistent state for later use
+water_ug_l = st.session_state.media['water_conc']
+water_scale_factor = st.session_state.media['water_scale'] / 100.0
+food_scale_factor = st.session_state.media['food_scale'] / 100.0
+soil_ppm = st.session_state.media['soil_conc']
+soil_scale_factor = st.session_state.media['soil_scale'] / 100.0
+dust_ppm = st.session_state.media['dust_conc']
+dust_scale_factor = st.session_state.media['dust_scale'] / 100.0
+air_ug_m3 = st.session_state.media['air_conc']
+air_scale_factor = st.session_state.media['air_scale'] / 100.0
 
 # Run button - centered and prominent
 st.markdown("---")
@@ -271,8 +314,8 @@ if run_button:
                 start_time = time.time()
                 from fortran_input_generator import generate_fortran_input
 
-                # Template file is in the same directory as this script
-                template_path = Path(__file__).parent / "templates" / "LeggettInput_Golden.txt"
+                # Template file path
+                template_path = Path("/mnt/c/Users/maxim/Downloads/LeggettInput.txt")
                 if not template_path.exists():
                     st.error(f"Template file not found at {template_path}")
                     st.stop()
@@ -281,7 +324,6 @@ if run_button:
                     template_path=template_path,
                     age_range=age_range,
                     sex=sex,
-                    food_scale_factor=food_scale_factor,
                     water_ug_l=water_ug_l,
                     water_scale_factor=water_scale_factor,
                     soil_ppm=soil_ppm,
@@ -290,6 +332,8 @@ if run_button:
                     dust_scale_factor=dust_scale_factor,
                     air_ug_m3=air_ug_m3,
                     air_scale_factor=air_scale_factor,
+                    food_scale_factor=food_scale_factor,
+                    custom_schedules=st.session_state.get('custom_schedules'),
                     sim_name='WebSim'
                 )
                 profiling_times['input_generation'] = time.time() - start_time

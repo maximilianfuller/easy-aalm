@@ -10,7 +10,19 @@ All intake schedules and RBA values are read directly from the golden template f
 """
 
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
+import pandas as pd
+
+
+# Number of columns in the golden file (for trailing comma padding)
+NUM_COLUMNS = 28
+
+
+def pad_parts(parts: list) -> list:
+    """Pad parts list to NUM_COLUMNS with empty strings."""
+    if len(parts) < NUM_COLUMNS:
+        parts = parts + [''] * (NUM_COLUMNS - len(parts))
+    return parts
 
 
 def format_number(value: float) -> str:
@@ -33,7 +45,6 @@ def generate_fortran_input(
     template_path: Path,
     age_range: Tuple[int, int],
     sex: str,
-    food_scale_factor: float,
     water_ug_l: float,
     water_scale_factor: float,
     soil_ppm: float,
@@ -42,6 +53,8 @@ def generate_fortran_input(
     dust_scale_factor: float,
     air_ug_m3: float,
     air_scale_factor: float,
+    food_scale_factor: float,
+    custom_schedules: Optional[Dict[str, Optional[pd.DataFrame]]] = None,
     sim_name: Optional[str] = None
 ) -> List[str]:
     """
@@ -51,7 +64,6 @@ def generate_fortran_input(
         template_path: Path to template file (should be LeggettInput_Golden.txt)
         age_range: (start_age, end_age) in years
         sex: "Male" or "Female"
-        food_scale_factor: Scale factor for food intake (1.0 = 100%)
         water_ug_l: Water lead concentration (μg/L)
         water_scale_factor: Scale factor for water intake (1.0 = 100%)
         soil_ppm: Soil lead concentration (PPM)
@@ -60,6 +72,9 @@ def generate_fortran_input(
         dust_scale_factor: Scale factor for dust intake (1.0 = 100%)
         air_ug_m3: Air lead concentration (μg/m³)
         air_scale_factor: Scale factor for air intake (1.0 = 100%)
+        food_scale_factor: Scale factor for food intake (1.0 = 100%)
+        custom_schedules: Dict mapping source names to custom schedule DataFrames
+                          (with 'Age (years)' and intake columns), or None for defaults
         sim_name: Optional simulation name (if None, keeps template name)
 
     Returns:
@@ -70,6 +85,14 @@ def generate_fortran_input(
     """
     if not template_path.exists():
         raise FileNotFoundError(f"Template file not found: {template_path}")
+
+    # Initialize custom_schedules if None
+    if custom_schedules is None:
+        custom_schedules = {}
+
+    def get_custom_schedule(source: str) -> Optional[pd.DataFrame]:
+        """Get custom schedule for a source, or None if using defaults."""
+        return custom_schedules.get(source)
 
     # Read template
     with open(template_path, 'r') as f:
@@ -126,13 +149,30 @@ def generate_fortran_input(
             parts[3] = '0.46' if sex == "Male" else '0.41'
             modified_lines.append(','.join(parts) + '\n')
 
-        # Modify food intake amounts (apply scale factor to template values)
+        # Modify food intake ages (use custom schedule if provided)
+        elif len(parts) > 1 and parts[0] == 'Food' and parts[1] == 'source_ages':
+            custom_df = get_custom_schedule('Food')
+            if custom_df is not None:
+                ages_days = [int(age * 365) for age in custom_df['Age (years)'].tolist()]
+                parts[2] = str(len(ages_days))
+                parts = pad_parts(parts[:3] + [str(a) for a in ages_days])
+            modified_lines.append(','.join(parts) + '\n')
+
+        # Modify food intake amounts (use custom schedule if provided, apply scale factor)
         elif len(parts) > 1 and parts[0] == 'Food' and parts[1] == 'source_amt1':
-            num_vals = int(parts[2])
-            for i in range(num_vals):
-                if len(parts) > 3 + i and parts[3 + i]:
-                    original_value = float(parts[3 + i])
-                    parts[3 + i] = format_number(original_value * food_scale_factor)
+            custom_df = get_custom_schedule('Food')
+            if custom_df is not None:
+                intake_col = [c for c in custom_df.columns if c != 'Age (years)'][0]
+                amounts = [a * food_scale_factor for a in custom_df[intake_col].tolist()]
+                parts[2] = str(len(amounts))
+                parts = pad_parts(parts[:3] + [format_number(a) for a in amounts])
+            else:
+                # Apply scale factor to template values
+                num_vals = int(parts[2])
+                for i in range(num_vals):
+                    if len(parts) > 3 + i and parts[3 + i]:
+                        original_value = float(parts[3 + i])
+                        parts[3 + i] = format_number(original_value * food_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify water concentration
@@ -140,13 +180,39 @@ def generate_fortran_input(
             parts[3] = format_number(water_ug_l)
             modified_lines.append(','.join(parts) + '\n')
 
-        # Modify water intake amounts (apply scale factor to template values)
+        # Modify water intake ages (use custom schedule if provided)
+        elif len(parts) > 1 and parts[0] == 'Water' and parts[1] == 'intake_ages':
+            custom_df = get_custom_schedule('Water')
+            if custom_df is not None:
+                ages_days = [int(age * 365) for age in custom_df['Age (years)'].tolist()]
+                parts[2] = str(len(ages_days))
+                parts = pad_parts(parts[:3] + [str(a) for a in ages_days])
+            modified_lines.append(','.join(parts) + '\n')
+
+        # Modify water intake amounts (use custom schedule if provided, apply scale factor)
         elif len(parts) > 1 and parts[0] == 'Water' and parts[1] == 'intake_amt':
-            num_vals = int(parts[2])
-            for i in range(num_vals):
-                if len(parts) > 3 + i and parts[3 + i]:
-                    original_value = float(parts[3 + i])
-                    parts[3 + i] = format_number(original_value * water_scale_factor)
+            custom_df = get_custom_schedule('Water')
+            if custom_df is not None:
+                intake_col = [c for c in custom_df.columns if c != 'Age (years)'][0]
+                amounts = [a * water_scale_factor for a in custom_df[intake_col].tolist()]
+                parts[2] = str(len(amounts))
+                parts = pad_parts(parts[:3] + [format_number(a) for a in amounts])
+            else:
+                # Apply scale factor to template values
+                num_vals = int(parts[2])
+                for i in range(num_vals):
+                    if len(parts) > 3 + i and parts[3 + i]:
+                        original_value = float(parts[3 + i])
+                        parts[3 + i] = format_number(original_value * water_scale_factor)
+            modified_lines.append(','.join(parts) + '\n')
+
+        # Modify frac1 for any media with custom schedule (update count to match)
+        elif len(parts) > 1 and parts[1] == 'frac1' and parts[0] in ('Water', 'Soil', 'Dust', 'Air'):
+            custom_df = get_custom_schedule(parts[0])
+            if custom_df is not None:
+                count = len(custom_df)
+                parts[2] = str(count)
+                parts = pad_parts(parts[:3] + ['1'] * count)
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify soil concentration
@@ -154,13 +220,30 @@ def generate_fortran_input(
             parts[3] = format_number(soil_ppm)
             modified_lines.append(','.join(parts) + '\n')
 
-        # Modify soil intake amounts (apply scale factor to template values)
+        # Modify soil intake ages (use custom schedule if provided)
+        elif len(parts) > 1 and parts[0] == 'Soil' and parts[1] == 'intake_ages':
+            custom_df = get_custom_schedule('Soil')
+            if custom_df is not None:
+                ages_days = [int(age * 365) for age in custom_df['Age (years)'].tolist()]
+                parts[2] = str(len(ages_days))
+                parts = pad_parts(parts[:3] + [str(a) for a in ages_days])
+            modified_lines.append(','.join(parts) + '\n')
+
+        # Modify soil intake amounts (use custom schedule if provided, apply scale factor)
         elif len(parts) > 1 and parts[0] == 'Soil' and parts[1] == 'intake_amt':
-            num_vals = int(parts[2])
-            for i in range(num_vals):
-                if len(parts) > 3 + i and parts[3 + i]:
-                    original_value = float(parts[3 + i])
-                    parts[3 + i] = format_number(original_value * soil_scale_factor)
+            custom_df = get_custom_schedule('Soil')
+            if custom_df is not None:
+                intake_col = [c for c in custom_df.columns if c != 'Age (years)'][0]
+                amounts = [a * soil_scale_factor for a in custom_df[intake_col].tolist()]
+                parts[2] = str(len(amounts))
+                parts = pad_parts(parts[:3] + [format_number(a) for a in amounts])
+            else:
+                # Apply scale factor to template values
+                num_vals = int(parts[2])
+                for i in range(num_vals):
+                    if len(parts) > 3 + i and parts[3 + i]:
+                        original_value = float(parts[3 + i])
+                        parts[3 + i] = format_number(original_value * soil_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify dust concentration
@@ -168,13 +251,30 @@ def generate_fortran_input(
             parts[3] = format_number(dust_ppm)
             modified_lines.append(','.join(parts) + '\n')
 
-        # Modify dust intake amounts (apply scale factor to template values)
+        # Modify dust intake ages (use custom schedule if provided)
+        elif len(parts) > 1 and parts[0] == 'Dust' and parts[1] == 'intake_ages':
+            custom_df = get_custom_schedule('Dust')
+            if custom_df is not None:
+                ages_days = [int(age * 365) for age in custom_df['Age (years)'].tolist()]
+                parts[2] = str(len(ages_days))
+                parts = pad_parts(parts[:3] + [str(a) for a in ages_days])
+            modified_lines.append(','.join(parts) + '\n')
+
+        # Modify dust intake amounts (use custom schedule if provided, apply scale factor)
         elif len(parts) > 1 and parts[0] == 'Dust' and parts[1] == 'intake_amt':
-            num_vals = int(parts[2])
-            for i in range(num_vals):
-                if len(parts) > 3 + i and parts[3 + i]:
-                    original_value = float(parts[3 + i])
-                    parts[3 + i] = format_number(original_value * dust_scale_factor)
+            custom_df = get_custom_schedule('Dust')
+            if custom_df is not None:
+                intake_col = [c for c in custom_df.columns if c != 'Age (years)'][0]
+                amounts = [a * dust_scale_factor for a in custom_df[intake_col].tolist()]
+                parts[2] = str(len(amounts))
+                parts = pad_parts(parts[:3] + [format_number(a) for a in amounts])
+            else:
+                # Apply scale factor to template values
+                num_vals = int(parts[2])
+                for i in range(num_vals):
+                    if len(parts) > 3 + i and parts[3 + i]:
+                        original_value = float(parts[3 + i])
+                        parts[3 + i] = format_number(original_value * dust_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
         # Modify air concentration
@@ -182,13 +282,30 @@ def generate_fortran_input(
             parts[3] = format_number(air_ug_m3)
             modified_lines.append(','.join(parts) + '\n')
 
-        # Modify air intake amounts (apply scale factor to template values)
+        # Modify air intake ages (use custom schedule if provided)
+        elif len(parts) > 1 and parts[0] == 'Air' and parts[1] == 'intake_ages':
+            custom_df = get_custom_schedule('Air')
+            if custom_df is not None:
+                ages_days = [int(age * 365) for age in custom_df['Age (years)'].tolist()]
+                parts[2] = str(len(ages_days))
+                parts = pad_parts(parts[:3] + [str(a) for a in ages_days])
+            modified_lines.append(','.join(parts) + '\n')
+
+        # Modify air intake amounts (use custom schedule if provided, apply scale factor)
         elif len(parts) > 1 and parts[0] == 'Air' and parts[1] == 'intake_amt':
-            num_vals = int(parts[2])
-            for i in range(num_vals):
-                if len(parts) > 3 + i and parts[3 + i]:
-                    original_value = float(parts[3 + i])
-                    parts[3 + i] = format_number(original_value * air_scale_factor)
+            custom_df = get_custom_schedule('Air')
+            if custom_df is not None:
+                intake_col = [c for c in custom_df.columns if c != 'Age (years)'][0]
+                amounts = [a * air_scale_factor for a in custom_df[intake_col].tolist()]
+                parts[2] = str(len(amounts))
+                parts = pad_parts(parts[:3] + [format_number(a) for a in amounts])
+            else:
+                # Apply scale factor to template values
+                num_vals = int(parts[2])
+                for i in range(num_vals):
+                    if len(parts) > 3 + i and parts[3 + i]:
+                        original_value = float(parts[3 + i])
+                        parts[3 + i] = format_number(original_value * air_scale_factor)
             modified_lines.append(','.join(parts) + '\n')
 
         # All other lines (including RBA) - keep as-is from template

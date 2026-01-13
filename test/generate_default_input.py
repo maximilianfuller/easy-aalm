@@ -10,14 +10,16 @@ from fortran_input_generator import generate_fortran_input
 age_range = (0, 90)
 sex = "Male"
 water_ppb = 0.9  # PPB
-water_scale_factor = 1.0
-food_ug_day = 10.0
 soil_ppm = 25
-soil_scale_factor = 1.0
 dust_ppm = 175
-dust_scale_factor = 1.0
 air_ug_m3 = 0.01
+
+# Scale factors (1.0 = 100% = default)
+water_scale_factor = 1.0
+soil_scale_factor = 1.0
+dust_scale_factor = 1.0
 air_scale_factor = 1.0
+food_scale_factor = 1.0
 
 # Convert water PPB to μg/L (they're the same)
 water_ug_l = water_ppb
@@ -25,12 +27,11 @@ water_ug_l = water_ppb
 # Use golden reference as template (matches Excel defaults exactly)
 template_path = Path("fortran_input_golden.txt")
 
-# Generate input using shared module
+# Generate input using shared module (no custom schedules = use template defaults)
 modified_lines = generate_fortran_input(
     template_path=template_path,
     age_range=age_range,
     sex=sex,
-    food_ug_day=food_ug_day,
     water_ug_l=water_ug_l,
     water_scale_factor=water_scale_factor,
     soil_ppm=soil_ppm,
@@ -39,6 +40,7 @@ modified_lines = generate_fortran_input(
     dust_scale_factor=dust_scale_factor,
     air_ug_m3=air_ug_m3,
     air_scale_factor=air_scale_factor,
+    food_scale_factor=food_scale_factor,
     sim_name=None  # Keep template name (SimName)
 )
 
@@ -51,8 +53,7 @@ print(f"Generated Fortran input file: {output_file}")
 print("\nDefault parameters used:")
 print(f"  Age Range: {age_range[0]}-{age_range[1]} years")
 print(f"  Sex: {sex}")
-print(f"  Water: {water_ppb} PPB (= {water_ug_l} μg/L), intake scale: {water_scale_factor*100}%")
-print(f"  Food: {food_ug_day} μg/day")
-print(f"  Soil: {soil_ppm} PPM, intake scale: {soil_scale_factor*100}%")
-print(f"  Dust: {dust_ppm} PPM, intake scale: {dust_scale_factor*100}%")
-print(f"  Air: {air_ug_m3} μg/m³, intake scale: {air_scale_factor*100}%")
+print(f"  Water: {water_ppb} PPB (= {water_ug_l} μg/L)")
+print(f"  Soil: {soil_ppm} PPM")
+print(f"  Dust: {dust_ppm} PPM")
+print(f"  Air: {air_ug_m3} μg/m³")
