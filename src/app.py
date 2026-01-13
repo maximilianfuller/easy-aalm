@@ -28,20 +28,22 @@ else:
 
 @st.cache_data
 def parse_golden_file(template_path: str) -> dict:
-    """Parse intake schedules, RBA values, and age range from the golden template file."""
-    data = {'schedules': {}, 'rba': {}, 'age_range': (0, 90)}
+    """Parse intake schedules, RBA values, concentrations, and age range from the golden template file."""
+    data = {'schedules': {}, 'rba': {}, 'conc': {}, 'age_range': (0, 90)}
     with open(template_path, 'r') as f:
         for line in f:
             parts = line.strip().split(',')
             if len(parts) < 4:
                 continue
             source = parts[0]  # Sim, Water, Soil, Dust, Air, Food
-            param = parts[1]   # age_range, intake_ages, intake_amt, RBA
+            param = parts[1]   # age_range, intake_ages, intake_amt, RBA, concs1
 
             if source == 'Sim' and param == 'age_range':
                 start_days = int(parts[3])
                 end_days = int(parts[4])
                 data['age_range'] = (start_days // 365, end_days // 365)
+            elif param == 'concs1':
+                data['conc'][source] = float(parts[3])
             elif param in ('intake_ages', 'source_ages'):
                 count = int(parts[2]) if parts[2].isdigit() else 0
                 values = [float(x) for x in parts[3:3+count] if x]
@@ -56,17 +58,19 @@ def parse_golden_file(template_path: str) -> dict:
 
 
 # Get template path and parse schedules and RBA values
-_template_path = Path("/mnt/c/Users/maxim/Downloads/LeggettInput.txt")
+_template_path = Path(__file__).resolve().parent / "templates" / "LeggettInput_Golden.txt"
 if _template_path.exists():
     _golden_data = parse_golden_file(str(_template_path))
     SCHEDULES = _golden_data['schedules']
     RBA = _golden_data['rba']
+    CONC = _golden_data['conc']
     DEFAULT_AGE_RANGE = _golden_data['age_range']
 else:
     # Fallback to empty data if template not found
     SCHEDULES = {}
     DEFAULT_AGE_RANGE = (0, 7)
     RBA = {}
+    CONC = {}
 
 
 def render_editable_schedule(source: str, ages_key: str, amt_key: str,
@@ -145,13 +149,13 @@ st.markdown("---")
 # All 5 exposure pathways in columns
 st.markdown("### Lead Exposure Sources")
 
-# Default values
+# Default values from golden file
 DEFAULTS = {
-    'water_conc': 0.9, 'water_scale': 100.0, 'water_rba': RBA.get('Water', 1.0),
+    'water_conc': CONC.get('Water', 0.9), 'water_scale': 100.0, 'water_rba': RBA.get('Water', 1.0),
     'food_scale': 100.0, 'food_rba': RBA.get('Food', 1.0),
-    'soil_conc': 652, 'soil_scale': 100.0, 'soil_rba': RBA.get('Soil', 0.6),
-    'dust_conc': 10, 'dust_scale': 100.0, 'dust_rba': RBA.get('Dust', 0.6),
-    'air_conc': 0.01, 'air_scale': 100.0, 'air_rba': RBA.get('Air', 1.0),
+    'soil_conc': CONC.get('Soil', 200), 'soil_scale': 100.0, 'soil_rba': RBA.get('Soil', 0.6),
+    'dust_conc': CONC.get('Dust', 150), 'dust_scale': 100.0, 'dust_rba': RBA.get('Dust', 0.6),
+    'air_conc': CONC.get('Air', 0.1), 'air_scale': 100.0, 'air_rba': RBA.get('Air', 1.0),
 }
 
 # Persistent state store (survives widget removal)
@@ -315,7 +319,7 @@ if run_button:
                 from fortran_input_generator import generate_fortran_input
 
                 # Template file path
-                template_path = Path("/mnt/c/Users/maxim/Downloads/LeggettInput.txt")
+                template_path = Path(__file__).parent / "templates" / "LeggettInput_Golden.txt"
                 if not template_path.exists():
                     st.error(f"Template file not found at {template_path}")
                     st.stop()
